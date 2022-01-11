@@ -457,6 +457,6 @@ int cacheDurationInSecondsInBackground = 60 * 60 * 25;
             [self.userDefaults synchronize];
         });
     }
-
+}
 @end
 
