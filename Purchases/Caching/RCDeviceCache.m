@@ -452,7 +452,7 @@ int cacheDurationInSecondsInBackground = 60 * 60 * 25;
         block(self.userDefaults);
         [self.userDefaults synchronize];
     } else {
-        dispatch_sync(dispatch_get_main_queue(), {
+        dispatch_sync(dispatch_get_main_queue(), ^{
             block(self.userDefaults);
             [self.userDefaults synchronize];
         });
