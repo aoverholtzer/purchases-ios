@@ -448,12 +448,15 @@ int cacheDurationInSecondsInBackground = 60 * 60 * 25;
  * Invokes the given block and synchronizes `NSUserDefaults` afterwards.
  */
 - (void)storeInUserDefaults:(void(^)(NSUserDefaults *))block {
-    @synchronized (self) {
+    if ([NSThread isMainThread]) {
         block(self.userDefaults);
-
         [self.userDefaults synchronize];
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), {
+            block(self.userDefaults);
+            [self.userDefaults synchronize];
+        });
     }
-}
 
 @end
 
