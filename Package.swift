@@ -84,5 +84,6 @@ let package = Package(
                     ],
                     exclude: ["Templates/__Snapshots__", "Data/__Snapshots__", "TestPlans"],
                     resources: [.copy("Resources/header.jpg"), .copy("Resources/background.jpg")])
-    ]
+    ],
+    swiftLanguageVersions: [.v5]
 )
