@@ -16,23 +16,21 @@ import SwiftUI
 @available(tvOS, unavailable, message: "RevenueCatUI does not support tvOS yet")
 @available(watchOS, unavailable, message: "Footers not supported on watchOS")
 public struct CSPaywallFooterView: View {
-    let offering: Offering?
-    let condensed: Bool
+    let configuration: PaywallViewConfiguration
     let onCompleted: PurchaseOrRestoreCompletedHandler?
     
     public init(offering: Offering?, condensed: Bool = false, onCompleted: PurchaseOrRestoreCompletedHandler? = nil) {
-        self.offering = offering
-        self.condensed = condensed
         self.onCompleted = onCompleted
-    }
-    
-    public var body: some View {
-        PaywallView(configuration: .init(
+        self.configuration = .init(
             content: .optionalOffering(offering),
             mode: condensed ? .condensedFooter : .footer,
             displayCloseButton: false,
             purchaseHandler: PurchaseHandler.default()
-        ))
+        )
+    }
+    
+    public var body: some View {
+        PaywallView(configuration: configuration)
         .onPurchaseCompleted {
             self.onCompleted?($0)
         }
