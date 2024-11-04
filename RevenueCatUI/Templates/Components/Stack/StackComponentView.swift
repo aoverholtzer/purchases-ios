@@ -20,6 +20,16 @@ import SwiftUI
 struct StackComponentView: View {
 
     let viewModel: StackComponentViewModel
+    let onDismiss: () -> Void
+    /// Used when this stack needs more padding than defined in the component, e.g. to avoid being drawn in the safe
+    /// area when displayed as a sticky footer.
+    let additionalPadding: EdgeInsets
+
+    init(viewModel: StackComponentViewModel, onDismiss: @escaping () -> Void, additionalPadding: EdgeInsets? = nil) {
+        self.viewModel = viewModel
+        self.onDismiss = onDismiss
+        self.additionalPadding = additionalPadding ?? EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0)
+    }
 
     var body: some View {
         Group {
@@ -27,28 +37,29 @@ struct StackComponentView: View {
             case .vertical(let horizontalAlignment):
                 // LazyVStack needed for performance when loading
                 LazyVStack(spacing: viewModel.spacing) {
-                    Group {
-                        ComponentsView(componentViewModels: self.viewModel.viewModels)
-                    }
+                    ComponentsView(componentViewModels: self.viewModel.viewModels, onDismiss: self.onDismiss)
                     .frame(maxWidth: .infinity, alignment: horizontalAlignment.stackAlignment)
                 }
             case .horizontal(let verticalAlignment):
                 HStack(alignment: verticalAlignment.stackAlignment, spacing: viewModel.spacing) {
-                    ComponentsView(componentViewModels: self.viewModel.viewModels)
+                    ComponentsView(componentViewModels: self.viewModel.viewModels, onDismiss: self.onDismiss)
                 }
             case .zlayer(let alignment):
                 ZStack(alignment: alignment.stackAlignment) {
-                    ComponentsView(componentViewModels: self.viewModel.viewModels)
+                    ComponentsView(componentViewModels: self.viewModel.viewModels, onDismiss: self.onDismiss)
                 }
             }
         }
         .padding(viewModel.padding)
+        .padding(additionalPadding)
         .width(viewModel.width)
         .background(viewModel.backgroundColor)
-        .roundedCorner(viewModel.cornerRadiuses.topLeading, corners: .topLeft)
-        .roundedCorner(viewModel.cornerRadiuses.topTrailing, corners: .topRight)
-        .roundedCorner(viewModel.cornerRadiuses.bottomLeading, corners: .bottomLeft)
-        .roundedCorner(viewModel.cornerRadiuses.bottomTrailing, corners: .bottomRight)
+        .cornerBorder(border: viewModel.border,
+                      radiuses: viewModel.cornerRadiuses)
+        .applyIfLet(viewModel.shadow) { view, shadow in
+            // Without compositingGroup(), the shadow is applied to the stack's children as well.
+            view.compositingGroup().shadow(shadow: shadow)
+        }
         .padding(viewModel.margin)
     }
 

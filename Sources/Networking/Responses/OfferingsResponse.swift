@@ -18,12 +18,27 @@ import Foundation
 
 public struct PaywallComponentsData: Codable, Equatable, Sendable {
 
+    public struct ComponentsConfigs: Codable, Equatable, Sendable {
+
+        public var base: ComponentsConfig
+
+        public init(base: ComponentsConfig) {
+            self.base = base
+        }
+
+    }
+
     public struct ComponentsConfig: Codable, Equatable, Sendable {
 
-        public var components: [PaywallComponent]
+        public var stack: PaywallComponent.StackComponent
+        public let stickyFooter: PaywallComponent.StickyFooterComponent?
 
-        public init(components: [PaywallComponent]) {
-            self.components = components
+        public init(
+            stack: PaywallComponent.StackComponent,
+            stickyFooter: PaywallComponent.StickyFooterComponent?
+        ) {
+            self.stack = stack
+            self.stickyFooter = stickyFooter
         }
 
     }
@@ -68,7 +83,7 @@ public struct PaywallComponentsData: Codable, Equatable, Sendable {
         set { self._revision = newValue }
     }
 
-    public var componentsConfig: ComponentsConfig
+    public var componentsConfigs: ComponentsConfigs
     public var componentsLocalizations: [PaywallComponent.LocaleID: PaywallComponent.LocalizationDictionary]
     public var defaultLocale: String
 
@@ -77,7 +92,7 @@ public struct PaywallComponentsData: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case templateName
-        case componentsConfig
+        case componentsConfigs
         case componentsLocalizations
         case defaultLocale
         case assetBaseURL = "assetBaseUrl"
@@ -86,13 +101,13 @@ public struct PaywallComponentsData: Codable, Equatable, Sendable {
 
     public init(templateName: String,
                 assetBaseURL: URL,
-                componentsConfig: ComponentsConfig,
+                componentsConfigs: ComponentsConfigs,
                 componentsLocalizations: [PaywallComponent.LocaleID: PaywallComponent.LocalizationDictionary],
                 revision: Int,
                 defaultLocaleIdentifier: String) {
         self.templateName = templateName
         self.assetBaseURL = assetBaseURL
-        self.componentsConfig = componentsConfig
+        self.componentsConfigs = componentsConfigs
         self.componentsLocalizations = componentsLocalizations
         self._revision = revision
         self.defaultLocale = defaultLocaleIdentifier

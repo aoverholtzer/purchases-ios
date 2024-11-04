@@ -10,7 +10,6 @@
 //  StackComponentView.swift
 //
 //  Created by James Borthwick on 2024-08-20.
-// swiftlint:disable missing_docs
 
 import RevenueCat
 import SwiftUI
@@ -18,26 +17,37 @@ import SwiftUI
 #if PAYWALL_COMPONENTS
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-public class StackComponentViewModel {
+class StackComponentViewModel {
 
-    private let locale: Locale
     private let component: PaywallComponent.StackComponent
 
     let viewModels: [PaywallComponentViewModel]
 
-    init(locale: Locale,
-         component: PaywallComponent.StackComponent,
-         localizedStrings: PaywallComponent.LocalizationDictionary,
-         offering: Offering
+    convenience init(
+        packageValidator: PackageValidator,
+        component: PaywallComponent.StackComponent,
+        localizedStrings: PaywallComponent.LocalizationDictionary,
+        offering: Offering
     ) throws {
-        self.locale = locale
-        self.component = component
-        self.viewModels = try component.components.map {
-            try $0.toViewModel(offering: offering, locale: locale, localizedStrings: localizedStrings)
-        }
+        self.init(
+            component: component,
+            viewModels: try component.components.map {
+                try $0.toViewModel(packageValidator: packageValidator,
+                                   offering: offering,
+                                   localizedStrings: localizedStrings)
+            }
+        )
     }
 
-    var dimension: PaywallComponent.StackComponent.Dimension {
+    init(
+        component: PaywallComponent.StackComponent,
+        viewModels: [PaywallComponentViewModel]
+    ) {
+        self.component = component
+        self.viewModels = viewModels
+    }
+
+    var dimension: PaywallComponent.Dimension {
         component.dimension
     }
 
@@ -61,12 +71,39 @@ public class StackComponentViewModel {
         component.margin.edgeInsets
     }
 
-    var cornerRadiuses: PaywallComponent.CornerRadiuses {
-        component.cornerRadiuses
-    }
-
     var width: PaywallComponent.WidthSize? {
         component.width
+    }
+
+    var cornerRadiuses: CornerBorderModifier.RaidusInfo? {
+        component.cornerRadiuses.flatMap { cornerRadiuses in
+            CornerBorderModifier.RaidusInfo(
+                topLeft: cornerRadiuses.topLeading,
+                topRight: cornerRadiuses.topTrailing,
+                bottomLeft: cornerRadiuses.bottomLeading,
+                bottomRight: cornerRadiuses.bottomLeading
+            )
+        }
+    }
+
+    var border: CornerBorderModifier.BorderInfo? {
+        component.border.flatMap { border in
+            CornerBorderModifier.BorderInfo(
+                color: border.color.toDyanmicColor(),
+                width: border.width
+            )
+        }
+    }
+
+    var shadow: ShadowModifier.ShadowInfo? {
+        component.shadow.flatMap { shadow in
+            ShadowModifier.ShadowInfo(
+                color: shadow.color.toDyanmicColor(),
+                radius: shadow.radius,
+                x: shadow.x,
+                y: shadow.y
+            )
+        }
     }
 
 }

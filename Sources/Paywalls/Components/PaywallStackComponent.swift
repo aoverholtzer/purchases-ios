@@ -10,7 +10,8 @@
 //  StackComponent.swift
 //
 //  Created by James Borthwick on 2024-08-20.
-// swiftlint:disable missing_docs nesting
+// swiftlint:disable missing_docs
+
 import Foundation
 
 #if PAYWALL_COMPONENTS
@@ -27,16 +28,24 @@ public extension PaywallComponent {
         public let dimension: Dimension
         public let padding: Padding
         public let margin: Padding
-        public let cornerRadiuses: CornerRadiuses
+        public let cornerRadiuses: CornerRadiuses?
+        public let border: Border?
+        public let shadow: Shadow?
 
-        public init(components: [PaywallComponent],
-                    dimension: Dimension = .vertical(.center),
-                    width: WidthSize? = nil,
-                    spacing: CGFloat? = 0,
-                    backgroundColor: ColorInfo?,
-                    padding: Padding = .zero,
-                    margin: Padding = .zero,
-                    cornerRadiuses: CornerRadiuses = .zero
+        public let overrides: ComponentOverrides<PartialStackComponent>?
+
+        public init(
+            components: [PaywallComponent],
+            dimension: Dimension = .vertical(.center),
+            width: WidthSize? = nil,
+            spacing: CGFloat? = nil,
+            backgroundColor: ColorInfo? = nil,
+            padding: Padding = .zero,
+            margin: Padding = .zero,
+            cornerRadiuses: CornerRadiuses? = nil,
+            border: Border? = nil,
+            shadow: Shadow? = nil,
+            overrides: ComponentOverrides<PartialStackComponent>? = nil
         ) {
             self.components = components
             self.width = width
@@ -47,73 +56,52 @@ public extension PaywallComponent {
             self.padding = padding
             self.margin = margin
             self.cornerRadiuses = cornerRadiuses
-        }
-
-        public enum Dimension: Codable, Sendable, Hashable {
-
-            case vertical(HorizontalAlignment)
-            case horizontal(VerticalAlignment)
-            case zlayer(TwoDimensionAlignment)
-
-            public func encode(to encoder: any Encoder) throws {
-                var container = encoder.container(keyedBy: CodingKeys.self)
-
-                switch self {
-                case .vertical(let alignment):
-                    try container.encode(DimensionType.vertical.rawValue, forKey: .type)
-                    try container.encode(alignment, forKey: .alignment)
-                case .horizontal(let alignment):
-                    try container.encode(DimensionType.horizontal.rawValue, forKey: .type)
-                    try container.encode(alignment, forKey: .alignment)
-                case .zlayer(let alignment):
-                    try container.encode(DimensionType.zlayer.rawValue, forKey: .type)
-                    try container.encode(alignment.rawValue, forKey: .alignment)
-                }
-            }
-
-            public init(from decoder: Decoder) throws {
-                let container = try decoder.container(keyedBy: CodingKeys.self)
-                let type = try container.decode(DimensionType.self, forKey: .type)
-
-                switch type {
-                case .vertical:
-                    let alignment = try container.decode(HorizontalAlignment.self, forKey: .alignment)
-                    self = .vertical(alignment)
-                case .horizontal:
-                    let alignment = try container.decode(VerticalAlignment.self, forKey: .alignment)
-                    self = .horizontal(alignment)
-                case .zlayer:
-                    let alignment = try container.decode(TwoDimensionAlignment.self, forKey: .alignment)
-                    self = .zlayer(alignment)
-                }
-            }
-
-            public static func horizontal() -> Dimension {
-                return .horizontal(.center)
-            }
-
-            public static func vertical() -> Dimension {
-                return .vertical(.center)
-            }
-
-            private enum CodingKeys: String, CodingKey {
-
-                case type
-                case alignment
-
-            }
-
-            private enum DimensionType: String, Decodable {
-
-                case vertical
-                case horizontal
-                case zlayer
-
-            }
-
+            self.border = border
+            self.shadow = shadow
+            self.overrides = overrides
         }
 
     }
+
+    struct PartialStackComponent: PartialComponent {
+
+        public let visible: Bool?
+        public let width: WidthSize?
+        public let spacing: CGFloat?
+        public let backgroundColor: ColorInfo?
+        public let dimension: Dimension?
+        public let padding: Padding?
+        public let margin: Padding?
+        public let cornerRadiuses: CornerRadiuses?
+        public let border: Border?
+        public let shadow: Shadow?
+
+        public init(
+            visible: Bool? = true,
+            dimension: Dimension? = nil,
+            width: WidthSize? = nil,
+            spacing: CGFloat? = nil,
+            backgroundColor: ColorInfo? = nil,
+            padding: Padding? = nil,
+            margin: Padding? = nil,
+            cornerRadiuses: CornerRadiuses? = nil,
+            border: Border? = nil,
+            shadow: Shadow? = nil
+        ) {
+            self.visible = visible
+            self.width = width
+            self.spacing = spacing
+            self.backgroundColor = backgroundColor
+            self.dimension = dimension
+            self.padding = padding
+            self.margin = margin
+            self.cornerRadiuses = cornerRadiuses
+            self.border = border
+            self.shadow = shadow
+        }
+
+    }
+
 }
 
 #endif

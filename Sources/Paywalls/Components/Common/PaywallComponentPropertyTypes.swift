@@ -55,6 +55,13 @@ public extension PaywallComponent {
 
     }
 
+    enum Shape: Codable, Sendable, Hashable, Equatable {
+
+        case rectangle
+        case pill
+
+    }
+
     struct Padding: Codable, Sendable, Hashable, Equatable {
 
         public init(top: Double, bottom: Double, leading: Double, trailing: Double) {
@@ -186,6 +193,25 @@ public extension PaywallComponent {
 
         case fit
         case fill
+
+    }
+
+    struct Shadow: Codable, Sendable, Hashable, Equatable {
+
+        public let color: ColorInfo
+        public let radius: CGFloat
+        // swiftlint:disable:next identifier_name
+        public let x: CGFloat
+        // swiftlint:disable:next identifier_name
+        public let y: CGFloat
+
+        // swiftlint:disable:next identifier_name
+        public init(color: ColorInfo, radius: CGFloat, x: CGFloat, y: CGFloat) {
+            self.color = color
+            self.radius = radius
+            self.x = x
+            self.y = y
+        }
 
     }
 

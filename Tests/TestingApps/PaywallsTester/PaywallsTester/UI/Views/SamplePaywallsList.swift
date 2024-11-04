@@ -91,7 +91,12 @@ struct SamplePaywallsList: View {
             CustomerCenterView(customerCenterActionHandler: self.handleCustomerCenterAction)
         #if PAYWALL_COMPONENTS
         case .componentPaywall(let data):
-            TemplateComponentsView(paywallComponentsData: data, offering: Self.loader.offeringWithDefaultPaywall())
+            PaywallView(configuration: .init(
+                offering: Self.loader.offering(with: data),
+                customerInfo: Self.loader.customerInfo,
+                displayCloseButton: Self.displayCloseButton,
+                introEligibility: Self.introEligibility
+            ))
         #endif
         }
 
@@ -104,7 +109,7 @@ struct SamplePaywallsList: View {
             Section("Components") {
                 Button {
                     let data = SamplePaywallLoader.template1Components
-                    data.componentsConfig.components.printAsJSON()
+                    data.componentsConfigs.base.stack.components.printAsJSON()
                     data.componentsLocalizations.printAsJSON()
                     self.display = .componentPaywall(data)
                 } label: {
@@ -112,7 +117,7 @@ struct SamplePaywallsList: View {
                 }
                 Button {
                     let data = SamplePaywallLoader.fitnessComponents
-                    data.componentsConfig.components.printAsJSON()
+                    data.componentsConfigs.base.stack.components.printAsJSON()
                     data.componentsLocalizations.printAsJSON()
                     self.display = .componentPaywall(data)
                 } label: {
@@ -120,11 +125,19 @@ struct SamplePaywallsList: View {
                 }
                 Button {
                     let data = SamplePaywallLoader.simpleSampleComponents
-                    data.componentsConfig.components.printAsJSON()
+                    data.componentsConfigs.base.stack.components.printAsJSON()
                     data.componentsLocalizations.printAsJSON()
                     self.display = .componentPaywall(data)
                 } label: {
                     TemplateLabel(name: "Simple Sample Components", icon: "iphone")
+                }
+                Button {
+                    let data = SamplePaywallLoader.longWithStickyFooter
+                    data.componentsConfigs.base.stack.components.printAsJSON()
+                    data.componentsLocalizations.printAsJSON()
+                    self.display = .componentPaywall(data)
+                } label: {
+                    TemplateLabel(name: "Long, with sticky footer", icon: "iphone")
                 }
             }
             #endif
@@ -177,7 +190,7 @@ struct SamplePaywallsList: View {
                     TemplateLabel(name: "Unrecognized paywall", icon: "exclamationmark.triangle")
                 }
             }
-            
+
             #if os(iOS)
             Section("Customer Center") {
                 Button {
@@ -185,7 +198,7 @@ struct SamplePaywallsList: View {
                 } label: {
                     TemplateLabel(name: "SwiftUI", icon: "person.fill.questionmark")
                 }
-                
+
                 Button {
                     self.presentingCustomerCenter = true
                 } label: {
@@ -305,7 +318,7 @@ extension SamplePaywallsList.Display: Identifiable {
 
         case .unrecognizedPaywall:
             return "unrecognized"
-            
+
         case .customerCenter:
             return "customer-center"
         #if PAYWALL_COMPONENTS
