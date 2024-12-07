@@ -105,43 +105,6 @@ struct SamplePaywallsList: View {
     private func list(with loader: SamplePaywallLoader) -> some View {
         List {
 
-            #if PAYWALL_COMPONENTS
-            Section("Components") {
-                Button {
-                    let data = SamplePaywallLoader.template1Components
-                    data.componentsConfigs.base.stack.components.printAsJSON()
-                    data.componentsLocalizations.printAsJSON()
-                    self.display = .componentPaywall(data)
-                } label: {
-                    TemplateLabel(name: "Curiosity Components", icon: "iphone")
-                }
-                Button {
-                    let data = SamplePaywallLoader.fitnessComponents
-                    data.componentsConfigs.base.stack.components.printAsJSON()
-                    data.componentsLocalizations.printAsJSON()
-                    self.display = .componentPaywall(data)
-                } label: {
-                    TemplateLabel(name: "Fitness Components", icon: "iphone")
-                }
-                Button {
-                    let data = SamplePaywallLoader.simpleSampleComponents
-                    data.componentsConfigs.base.stack.components.printAsJSON()
-                    data.componentsLocalizations.printAsJSON()
-                    self.display = .componentPaywall(data)
-                } label: {
-                    TemplateLabel(name: "Simple Sample Components", icon: "iphone")
-                }
-                Button {
-                    let data = SamplePaywallLoader.longWithStickyFooter
-                    data.componentsConfigs.base.stack.components.printAsJSON()
-                    data.componentsLocalizations.printAsJSON()
-                    self.display = .componentPaywall(data)
-                } label: {
-                    TemplateLabel(name: "Long, with sticky footer", icon: "iphone")
-                }
-            }
-            #endif
-
             ForEach(PaywallTemplate.allCases, id: \.rawValue) { template in
                 Section(template.name) {
                     ForEach(PaywallViewMode.allCases, id: \.self) { mode in
@@ -203,6 +166,14 @@ struct SamplePaywallsList: View {
                     self.presentingCustomerCenter = true
                 } label: {
                     TemplateLabel(name: "Sheet", icon: "person.fill")
+                }
+            }
+            #endif
+
+            #if DEBUG && !os(watchOS)
+            if #available(iOS 16.0, macOS 13.0, *) {
+                Section("Debug") {
+                    DebugView()
                 }
             }
             #endif

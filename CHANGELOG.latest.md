@@ -1,16 +1,28 @@
 ## RevenueCat SDK
-### 📦 Dependency Updates
-* Bump rexml from 3.3.8 to 3.3.9 (#4419) via dependabot[bot] (@dependabot[bot])
-* Bump rexml from 3.3.7 to 3.3.9 in /Tests/InstallationTests/CocoapodsInstallation (#4418) via dependabot[bot] (@dependabot[bot])
+### ✨ New Features
+* Adds `subscriptions` to `CustomerInfo` (#4508) via Cesar de la Vega (@vegaro)
+### 🐞 Bugfixes
+* [Paywalls] Fix PaywallTester compilation on Xcode 15 (#4540) via Mark Villacampa (@MarkVillacampa)
+* Paywalls: Update Finnish "restore" localization (#4493) via Jeffrey Bunn (@Jethro87)
 
 ## RevenueCatUI SDK
+### 🐞 Bugfixes
+* Fix translucent navigation bar on paywalls by making it fully transparent (on iOS 16+) (#4543) via Josh Holtz (@joshdholtz)
+* Fix build for app extensions (#4531) via Cesar de la Vega (@vegaro)
 ### Customer Center
 #### 🐞 Bugfixes
-* Adds compatibility for suffix offer identifiers (#4393) via Cesar de la Vega (@vegaro)
+* Adds missing revisionId to CustomerCenter impression event (#4537) via Cesar de la Vega (@vegaro)
+* Customer Center deeplinks should always be opened externally (#4533) via Cesar de la Vega (@vegaro)
+* Use `ManageSubscriptionsView` for users without active subscriptions (#4530) via Cesar de la Vega (@vegaro)
 
 ### 🔄 Other Changes
-* Fixes the sticky footer not drawing in the bottom safe area. (#4422) via JayShortway (@JayShortway)
-* Adds long sample paywall with sticky footer to PaywallsTester (#4412) via JayShortway (@JayShortway)
-* `RootView` actually shows the sticky footer (#4411) via JayShortway (@JayShortway)
-* Adds scaffolding for `StickyFooterComponent` (#4409) via JayShortway (@JayShortway)
-* Improved JSON format for ButtonComponent codables (#4408) via Josh Holtz (@joshdholtz)
+* run-test-ios-15 in xcode 15 to fix incompatibilities with emergetools (#4319) via Cesar de la Vega (@vegaro)
+* WebPurchaseRedemption: Rename `alreadyRedeemed` result to `purchaseBelongsToOtherUser` (#4542) via Toni Rico (@tonidero)
+* [Paywalls] Add previews for different combinations of vertical/horizontal alignment and flex distributions (#4538) via Mark Villacampa (@MarkVillacampa)
+* Renames isDeeplink to isWebLink (#4535) via Cesar de la Vega (@vegaro)
+* Update Package.resolved (#4534) via Cesar de la Vega (@vegaro)
+* Add repo name (#4532) via Noah Martin (@noahsmartin)
+* [Paywalls] Add Emerge Snapshot Tests (#4529) via Mark Villacampa (@MarkVillacampa)
+* Adds API Test for `jwsRepresentation` in obj-c (#4526) via Andy Boedo (@aboedo)
+* Create `CustomerCenterEvent` (#4392) via Cesar de la Vega (@vegaro)
+* [Paywalls] Add support for gradient backgrounds (#4522) via Mark Villacampa (@MarkVillacampa)

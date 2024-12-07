@@ -10,7 +10,7 @@
 //  PaywallComponentPropertyTypes.swift
 //
 //  Created by James Borthwick on 2024-08-29.
-// swiftlint:disable missing_docs
+// swiftlint:disable missing_docs file_length
 
 import Foundation
 
@@ -43,22 +43,205 @@ public extension PaywallComponent {
         public let heicLowRes: URL
     }
 
-    struct ColorInfo: Codable, Sendable, Hashable, Equatable {
+    struct GradientPoint: Codable, Sendable, Hashable, Equatable {
 
-        public init(light: ColorHex, dark: ColorHex? = nil) {
+        public let color: ColorHex
+        public let percent: Int
+
+        public init(color: ColorHex, percent: Int) {
+            self.color = color
+            self.percent = percent
+        }
+
+    }
+
+    struct ColorScheme: Codable, Sendable, Hashable, Equatable {
+
+        public init(light: ColorInfo, dark: ColorInfo? = nil) {
             self.light = light
             self.dark = dark
         }
 
-        public let light: ColorHex
-        public let dark: ColorHex?
+        public let light: ColorInfo
+        public let dark: ColorInfo?
+
+    }
+
+    enum ColorInfo: Codable, Sendable, Hashable {
+
+        case hex(ColorHex)
+        case alias(String)
+        case linear(Int, [GradientPoint])
+        case radial([GradientPoint])
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case .hex(let hex):
+                try container.encode(ColorInfoTypes.hex.rawValue, forKey: .type)
+                try container.encode(hex, forKey: .value)
+            case .alias(let alias):
+                try container.encode(ColorInfoTypes.alias.rawValue, forKey: .type)
+                try container.encode(alias, forKey: .value)
+            case .linear(let degrees, let points):
+                try container.encode(ColorInfoTypes.linear.rawValue, forKey: .type)
+                try container.encode(degrees, forKey: .degrees)
+                try container.encode(points, forKey: .points)
+            case .radial(let points):
+                try container.encode(ColorInfoTypes.radial.rawValue, forKey: .type)
+                try container.encode(points, forKey: .points)
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(ColorInfoTypes.self, forKey: .type)
+
+            switch type {
+            case .hex:
+                let value = try container.decode(ColorHex.self, forKey: .value)
+                self = .hex(value)
+            case .alias:
+                let value = try container.decode(String.self, forKey: .value)
+                self = .alias(value)
+            case .linear:
+                let points = try container.decode([GradientPoint].self, forKey: .points)
+                let degrees = try container.decode(Int.self, forKey: .degrees)
+                self = .linear(degrees, points)
+            case .radial:
+                let points = try container.decode([GradientPoint].self, forKey: .points)
+                self = .radial(points)
+            }
+        }
+
+        // swiftlint:disable:next nesting
+        private enum CodingKeys: String, CodingKey {
+
+            case type
+            case value
+            case degrees
+            case points
+
+        }
+
+        // swiftlint:disable:next nesting
+        private enum ColorInfoTypes: String, Decodable {
+
+            case hex
+            case alias
+            case linear
+            case radial
+
+        }
 
     }
 
     enum Shape: Codable, Sendable, Hashable, Equatable {
 
-        case rectangle
+        case rectangle(CornerRadiuses?)
         case pill
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case .rectangle(let corners):
+                try container.encode(ShapeType.rectangle.rawValue, forKey: .type)
+                try container.encode(corners, forKey: .corners)
+            case .pill:
+                try container.encode(ShapeType.pill.rawValue, forKey: .type)
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(ShapeType.self, forKey: .type)
+
+            switch type {
+            case .rectangle:
+                let value = try container.decode(CornerRadiuses.self, forKey: .corners)
+                self = .rectangle(value)
+            case .pill:
+                self = .pill
+            }
+        }
+
+        // swiftlint:disable:next nesting
+        private enum CodingKeys: String, CodingKey {
+
+            case type
+            case corners
+
+        }
+
+        // swiftlint:disable:next nesting
+        private enum ShapeType: String, Decodable {
+
+            case rectangle
+            case pill
+
+        }
+
+    }
+
+    enum MaskShape: Codable, Sendable, Hashable, Equatable {
+
+        case rectangle(CornerRadiuses?)
+        case pill
+        case concave
+        case convex
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case .rectangle(let corners):
+                try container.encode(MaskShapeType.rectangle.rawValue, forKey: .type)
+                try container.encode(corners, forKey: .corners)
+            case .pill:
+                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+            case .concave:
+                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+            case .convex:
+                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(MaskShapeType.self, forKey: .type)
+
+            switch type {
+            case .rectangle:
+                let value = try container.decode(CornerRadiuses.self, forKey: .corners)
+                self = .rectangle(value)
+            case .pill:
+                self = .pill
+            case .concave:
+                self = .concave
+            case .convex:
+                self = .convex
+            }
+        }
+
+        // swiftlint:disable:next nesting
+        private enum CodingKeys: String, CodingKey {
+
+            case type
+            case corners
+
+        }
+
+        // swiftlint:disable:next nesting
+        private enum MaskShapeType: String, Decodable {
+
+            case rectangle
+            case pill
+            case concave
+            case convex
+
+        }
 
     }
 
@@ -109,19 +292,80 @@ public extension PaywallComponent {
 
     }
 
-    enum WidthSizeType: String, Codable, Sendable, Hashable, Equatable {
-        case fit, fill, fixed
-    }
+    struct Size: Codable, Sendable, Hashable, Equatable {
 
-    struct WidthSize: Codable, Sendable, Hashable, Equatable {
+        public let width: SizeConstraint
+        public let height: SizeConstraint
 
-        public init(type: WidthSizeType, value: Int? ) {
-            self.type = type
-            self.value = value
+        public init(width: PaywallComponent.SizeConstraint, height: PaywallComponent.SizeConstraint) {
+            self.width = width
+            self.height = height
         }
 
-        public let type: WidthSizeType
-        public let value: Int?
+    }
+
+    enum SizeConstraint: Codable, Sendable, Hashable {
+
+        case fit
+        case fill
+        case fixed(UInt)
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case .fit:
+                try container.encode(SizeConstraintType.fit.rawValue, forKey: .type)
+            case .fill:
+                try container.encode(SizeConstraintType.fill.rawValue, forKey: .type)
+            case .fixed(let value):
+                try container.encode(SizeConstraintType.fixed.rawValue, forKey: .type)
+                try container.encode(value, forKey: .value)
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(SizeConstraintType.self, forKey: .type)
+
+            switch type {
+            case .fit:
+                self = .fit
+            case .fill:
+                self = .fill
+            case .fixed:
+                let value = try container.decode(UInt.self, forKey: .value)
+                self = .fixed(value)
+            }
+        }
+
+        // swiftlint:disable:next nesting
+        private enum CodingKeys: String, CodingKey {
+
+            case type
+            case value
+
+        }
+
+        // swiftlint:disable:next nesting
+        private enum SizeConstraintType: String, Decodable {
+
+            case fit
+            case fill
+            case fixed
+
+        }
+
+    }
+
+    enum FlexDistribution: String, Codable, Sendable, Hashable, Equatable {
+
+        case start
+        case center
+        case end
+        case spaceBetween = "space_between"
+        case spaceAround = "space_around"
+        case spaceEvenly = "space_evenly"
 
     }
 
@@ -148,44 +392,39 @@ public extension PaywallComponent {
         case trailing
         case top
         case bottom
-        case topLeading
-        case topTrailing
-        case bottomLeading
-        case bottomTrailing
+        case topLeading = "top_leading"
+        case topTrailing = "top_trailing"
+        case bottomLeading = "bottom_leading"
+        case bottomTrailing = "bottom_trailing"
 
     }
 
     enum FontWeight: String, Codable, Sendable, Hashable, Equatable {
 
-        case ultraLight
+        case extraLight = "extra_light"
         case thin
         case light
         case regular
         case medium
         case semibold
         case bold
-        case heavy
+        case extraBold = "extra_bold"
         case black
 
     }
 
-    enum TextStyle: String, Codable, Sendable, Hashable, Equatable {
+    enum FontSize: String, Codable, Sendable, Hashable, Equatable {
 
-        case largeTitle = "large_title"
-        case title
-        case title2
-        case title3
-        case headline
-        case subheadline
-        case body
-        case callout
-        case footnote
-        case caption
-        case caption2
-
-        // Swift 5.9 stuff
-        case extraLargeTitle = "extra_large_title"
-        case extraLargeTitle2 = "extra_large_title2"
+        case headingXXL = "heading_xxl"
+        case headingXL = "heading_xl"
+        case headingL = "heading_l"
+        case headingM = "heading_m"
+        case headingS = "heading_s"
+        case headingXS = "heading_xs"
+        case bodyXL = "body_xl"
+        case bodyL = "body_l"
+        case bodyM = "body_m"
+        case bodyS = "body_s"
 
     }
 
@@ -198,7 +437,7 @@ public extension PaywallComponent {
 
     struct Shadow: Codable, Sendable, Hashable, Equatable {
 
-        public let color: ColorInfo
+        public let color: ColorScheme
         public let radius: CGFloat
         // swiftlint:disable:next identifier_name
         public let x: CGFloat
@@ -206,7 +445,7 @@ public extension PaywallComponent {
         public let y: CGFloat
 
         // swiftlint:disable:next identifier_name
-        public init(color: ColorInfo, radius: CGFloat, x: CGFloat, y: CGFloat) {
+        public init(color: ColorScheme, radius: CGFloat, x: CGFloat, y: CGFloat) {
             self.color = color
             self.radius = radius
             self.x = x

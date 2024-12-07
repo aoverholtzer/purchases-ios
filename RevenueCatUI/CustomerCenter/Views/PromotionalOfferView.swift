@@ -27,8 +27,6 @@ struct PromotionalOfferView: View {
 
     @StateObject
     private var viewModel: PromotionalOfferViewModel
-    @Environment(\.dismiss)
-    private var dismiss
     @Environment(\.localization)
     private var localization: CustomerCenterConfigData.Localization
     @Environment(\.appearance)
@@ -37,9 +35,13 @@ struct PromotionalOfferView: View {
     private var colorScheme
     @State private var isLoading: Bool = false
 
+    private let onDismissPromotionalOfferView: (PromotionalOfferViewAction) -> Void
+
     init(promotionalOffer: PromotionalOffer,
          product: StoreProduct,
-         promoOfferDetails: CustomerCenterConfigData.HelpPath.PromotionalOffer) {
+         promoOfferDetails: CustomerCenterConfigData.HelpPath.PromotionalOffer,
+         onDismissPromotionalOfferView: @escaping (PromotionalOfferViewAction) -> Void
+    ) {
         _viewModel = StateObject(wrappedValue: PromotionalOfferViewModel(
             promotionalOfferData: PromotionalOfferData(
                 promotionalOffer: promotionalOffer,
@@ -47,6 +49,7 @@ struct PromotionalOfferView: View {
                 promoOfferDetails: promoOfferDetails
             )
         ))
+        self.onDismissPromotionalOfferView = onDismissPromotionalOfferView
     }
 
     private let horizontalPadding: CGFloat = 20
@@ -59,32 +62,77 @@ struct PromotionalOfferView: View {
 
             VStack {
                 if self.viewModel.error == nil {
+
+                    AppIconView()
+                        .padding(.top, 100)
+                        .padding(.bottom)
+                        .padding(.horizontal)
+
                     PromotionalOfferHeaderView(viewModel: self.viewModel)
 
                     Spacer()
 
-                    PromoOfferButtonView(isLoading: $isLoading,
-                                         viewModel: self.viewModel,
-                                         appearance: self.appearance)
+                    PromoOfferButtonView(
+                        isLoading: $isLoading,
+                        viewModel: self.viewModel,
+                        appearance: self.appearance
+                    )
                     .padding(.horizontal, horizontalPadding)
 
                     Button {
-                        dismiss()
+                        self.dismissPromotionalOfferView(.declinePromotionalOffer)
                     } label: {
                         Text(self.localization.commonLocalizedString(for: .noThanks))
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                } else {
-                    EmptyView()
-                        .onAppear {
-                            dismiss()
-                        }
                 }
             }
         }
+        .onAppear {
+            self.viewModel.onPromotionalOfferPurchaseFlowComplete = self.dismissPromotionalOfferView
+        }
     }
 
+    // Called when the promotional offer flow is purchased, successfully or not
+    private func dismissPromotionalOfferView(
+        _ action: PromotionalOfferViewAction
+    ) {
+        self.onDismissPromotionalOfferView(action) // Forward results to parent view
+    }
+
+    private struct AppIconView: View {
+
+        var body: some View {
+            if let appIcon = AppIconHelper.getAppIcon() {
+                Image(uiImage: appIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 70, height: 70)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .shadow(radius: 10)
+            } else {
+                Color.clear
+                    // keep a size similar to what the image would have occuppied so layout looks correct
+                    .frame(width: 70, height: 50)
+            }
+        }
+
+    }
+
+    private enum AppIconHelper {
+
+        static func getAppIcon() -> UIImage? {
+            guard let iconsDictionary = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+                  let primaryIcons = iconsDictionary["CFBundlePrimaryIcon"] as? [String: Any],
+                  let iconFiles = primaryIcons["CFBundleIconFiles"] as? [String],
+                  let lastIcon = iconFiles.last else {
+                return nil
+            }
+            return UIImage(named: lastIcon)
+        }
+
+    }
 }
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
@@ -101,7 +149,6 @@ struct PromotionalOfferHeaderView: View {
     private(set) var viewModel: PromotionalOfferViewModel
 
     private let spacing: CGFloat = 30
-    private let topPadding: CGFloat = 150
     private let horizontalPadding: CGFloat = 40
 
     var body: some View {
@@ -112,7 +159,7 @@ struct PromotionalOfferHeaderView: View {
                     .font(.title)
                     .fontWeight(.bold)
                     .multilineTextAlignment(.center)
-                    .padding(.top, topPadding)
+                    .padding(.top)
 
                 Text(details.subtitle)
                     .font(.body)
@@ -179,6 +226,40 @@ struct PromoOfferButtonView: View {
         }
     }
 
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+@available(macOS, unavailable)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+/// An enum representing the possible actions that a user can take on the PromotionalOfferView
+enum PromotionalOfferViewAction {
+    /// The user clicked the "No Thanks" button and declined the offer
+    case declinePromotionalOffer
+
+    /// The user successfully redeemed the promotional offer
+    case successfullyRedeemedPromotionalOffer(PurchaseResultData)
+
+    // Promotional code redemption failed. Either the user attempted to redeem the promotional offer, and it failed,
+    // or the promotional offer was not loaded successfully.
+    case promotionalCodeRedemptionFailed(Error)
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+@available(macOS, unavailable)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+extension PromotionalOfferViewAction {
+
+    /// Whether the current path flow should be exited after the action is handled
+    var shouldTerminateCurrentPathFlow: Bool {
+        switch self {
+        case .declinePromotionalOffer, .promotionalCodeRedemptionFailed:
+            return false
+        case .successfullyRedeemedPromotionalOffer:
+            return true
+        }
+    }
 }
 
 #endif

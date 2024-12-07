@@ -18,7 +18,7 @@ import SwiftUI
 
 #if os(iOS)
 
-/// Warning: This is currently in beta and ubject to change.
+/// Warning: This is currently in beta and subject to change.
 ///
 /// A SwiftUI view for displaying a customer support common tasks
 @available(iOS 15.0, *)
@@ -33,17 +33,23 @@ public struct CustomerCenterView: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
+    private let mode: CustomerCenterPresentationMode
+
     /// Create a view to handle common customer support tasks
     /// - Parameters:
     ///   - customerCenterActionHandler: An optional `CustomerCenterActionHandler` to handle actions
     ///   from the customer center.
-    public init(customerCenterActionHandler: CustomerCenterActionHandler? = nil) {
+    public init(customerCenterActionHandler: CustomerCenterActionHandler? = nil,
+                mode: CustomerCenterPresentationMode = CustomerCenterPresentationMode.default) {
         self._viewModel = .init(wrappedValue:
                                     CustomerCenterViewModel(customerCenterActionHandler: customerCenterActionHandler))
+        self.mode = mode
     }
 
-    fileprivate init(viewModel: CustomerCenterViewModel) {
+    fileprivate init(viewModel: CustomerCenterViewModel,
+                     mode: CustomerCenterPresentationMode = CustomerCenterPresentationMode.default) {
         self._viewModel = .init(wrappedValue: viewModel)
+        self.mode = mode
     }
 
     // swiftlint:disable:next missing_docs
@@ -63,6 +69,9 @@ public struct CustomerCenterView: View {
         .task {
             await loadInformationIfNeeded()
         }
+        .task {
+            self.trackImpression()
+        }
         .environmentObject(self.viewModel)
     }
 
@@ -76,15 +85,15 @@ private extension CustomerCenterView {
 
     func loadInformationIfNeeded() async {
         if !viewModel.isLoaded {
-            await viewModel.loadHasSubscriptions()
+            await viewModel.loadHasActivePurchases()
             await viewModel.loadCustomerCenterConfig()
         }
     }
 
     @ViewBuilder
     func destinationContent(configuration: CustomerCenterConfigData) -> some View {
-        if viewModel.hasSubscriptions {
-            if viewModel.subscriptionsAreFromApple,
+        if viewModel.hasActiveProducts {
+            if viewModel.hasAppleEntitlement,
                let screen = configuration.screens[.management] {
                 if let productId = configuration.productId, !ignoreAppUpdateWarning && !viewModel.appIsLatestVersion {
                     AppUpdateWarningView(
@@ -103,7 +112,13 @@ private extension CustomerCenterView {
                 WrongPlatformView()
             }
         } else {
-            NoSubscriptionsView(configuration: configuration)
+            if let screen = configuration.screens[.noActive] {
+                ManageSubscriptionsView(screen: screen,
+                                        customerCenterActionHandler: viewModel.customerCenterActionHandler)
+            } else {
+                // Fallback with a restore button
+                NoSubscriptionsView(configuration: configuration)
+            }
         }
     }
 
@@ -118,6 +133,11 @@ private extension CustomerCenterView {
         .applyIf(accentColor != nil, apply: { $0.tint(accentColor) })
     }
 
+    func trackImpression() {
+        viewModel.trackImpression(darkMode: self.colorScheme == .dark,
+                                  displayMode: self.mode)
+    }
+
 }
 
 #if DEBUG
@@ -129,7 +149,7 @@ private extension CustomerCenterView {
 struct CustomerCenterView_Previews: PreviewProvider {
 
    static var previews: some View {
-       let viewModel = CustomerCenterViewModel(hasSubscriptions: false, areSubscriptionsFromApple: false)
+       let viewModel = CustomerCenterViewModel(hasActiveProducts: false, hasAppleEntitlement: false)
        CustomerCenterView(viewModel: viewModel)
    }
 

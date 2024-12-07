@@ -55,7 +55,8 @@ struct ManageSubscriptionsView: View {
                 .navigationDestination(isPresented: .isNotNil(self.$viewModel.feedbackSurveyData)) {
                     if let feedbackSurveyData = self.viewModel.feedbackSurveyData {
                         FeedbackSurveyView(feedbackSurveyData: feedbackSurveyData,
-                                           customerCenterActionHandler: self.customerCenterActionHandler)
+                                           customerCenterActionHandler: self.customerCenterActionHandler,
+                                           isPresented: .isNotNil(self.$viewModel.feedbackSurveyData))
                     }
                 }
         } else {
@@ -63,7 +64,8 @@ struct ManageSubscriptionsView: View {
                 .background(NavigationLink(
                     destination: self.viewModel.feedbackSurveyData.map { data in
                         FeedbackSurveyView(feedbackSurveyData: data,
-                                           customerCenterActionHandler: self.customerCenterActionHandler)
+                                           customerCenterActionHandler: self.customerCenterActionHandler,
+                                           isPresented: .isNotNil(self.$viewModel.feedbackSurveyData))
                     },
                     isActive: .isNotNil(self.$viewModel.feedbackSurveyData)
                 ) {
@@ -78,23 +80,38 @@ struct ManageSubscriptionsView: View {
             if self.viewModel.isLoaded {
                 List {
 
-                    if let subscriptionInformation = self.viewModel.subscriptionInformation {
+                    if let purchaseInformation = self.viewModel.purchaseInformation {
                         Section {
                             SubscriptionDetailsView(
-                                subscriptionInformation: subscriptionInformation,
+                                purchaseInformation: purchaseInformation,
                                 refundRequestStatus: self.viewModel.refundRequestStatus)
+                        }
+                        Section {
+                            ManageSubscriptionsButtonsView(viewModel: self.viewModel,
+                                                           loadingPath: self.$viewModel.loadingPath)
+                        } header: {
+                            if let subtitle = self.viewModel.screen.subtitle {
+                                Text(subtitle)
+                                    .textCase(nil)
+                            }
+                        }
+                    } else {
+                        let fallbackDescription = localization.commonLocalizedString(for: .tryCheckRestore)
+
+                        Section {
+                            CompatibilityContentUnavailableView(
+                                self.viewModel.screen.title,
+                                systemImage: "exclamationmark.triangle.fill",
+                                description: Text(self.viewModel.screen.subtitle ?? fallbackDescription)
+                            )
+                        }
+
+                        Section {
+                            ManageSubscriptionsButtonsView(viewModel: self.viewModel,
+                                                           loadingPath: self.$viewModel.loadingPath)
                         }
                     }
 
-                    Section {
-                        ManageSubscriptionsButtonsView(viewModel: self.viewModel,
-                                                       loadingPath: self.$viewModel.loadingPath)
-                    } header: {
-                        if let subtitle = self.viewModel.screen.subtitle {
-                            Text(subtitle)
-                                .textCase(nil)
-                        }
-                    }
                 }
             } else {
                 TintedProgressView()
@@ -109,25 +126,31 @@ struct ManageSubscriptionsView: View {
             await loadInformationIfNeeded()
         }
         .restorePurchasesAlert(isPresented: self.$viewModel.showRestoreAlert)
-        .sheet(item: self.$viewModel.promotionalOfferData,
-               onDismiss: {
-            Task {
-                await self.viewModel.handleSheetDismiss()
-            }
-        },
-               content: { promotionalOfferData in
-            PromotionalOfferView(promotionalOffer: promotionalOfferData.promotionalOffer,
-                                 product: promotionalOfferData.product,
-                                 promoOfferDetails: promotionalOfferData.promoOfferDetails)
-        })
+        .sheet(
+            item: self.$viewModel.promotionalOfferData,
+            content: { promotionalOfferData in
+                PromotionalOfferView(
+                    promotionalOffer: promotionalOfferData.promotionalOffer,
+                    product: promotionalOfferData.product,
+                    promoOfferDetails: promotionalOfferData.promoOfferDetails,
+                    onDismissPromotionalOfferView: { userAction in
+                        Task(priority: .userInitiated) {
+                            await self.viewModel.handleDismissPromotionalOfferView(userAction)
+                        }
+                    }
+                )
+                .interactiveDismissDisabled()
+            })
         .sheet(item: self.$viewModel.inAppBrowserURL,
                onDismiss: {
             self.viewModel.onDismissInAppBrowser()
         }, content: { inAppBrowserURL in
             SafariView(url: inAppBrowserURL.url)
         })
-        .navigationTitle(self.viewModel.screen.title)
-        .navigationBarTitleDisplayMode(.inline)
+        .applyIf(self.viewModel.screen.type == .management, apply: {
+            $0.navigationTitle(self.viewModel.screen.title).navigationBarTitleDisplayMode(.inline)
+        })
+
     }
 
 }
@@ -146,63 +169,6 @@ private extension ManageSubscriptionsView {
 
 }
 
-@available(iOS 15.0, *)
-@available(macOS, unavailable)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-struct ManageSubscriptionsButtonsView: View {
-
-    @ObservedObject
-    var viewModel: ManageSubscriptionsViewModel
-    @Binding
-    var loadingPath: CustomerCenterConfigData.HelpPath?
-    @Environment(\.openURL)
-    var openURL
-
-    @Environment(\.localization)
-    private var localization: CustomerCenterConfigData.Localization
-
-    var body: some View {
-        let filteredPaths = self.viewModel.screen.paths.filter { path in
-#if targetEnvironment(macCatalyst)
-            return path.type == .refundRequest
-#else
-            return path.type != .unknown
-#endif
-        }
-        ForEach(filteredPaths, id: \.id) { path in
-            ManageSubscriptionButton(path: path, viewModel: self.viewModel)
-        }
-    }
-
-}
-
-@available(iOS 15.0, *)
-@available(macOS, unavailable)
-@available(tvOS, unavailable)
-@available(watchOS, unavailable)
-struct ManageSubscriptionButton: View {
-
-    let path: CustomerCenterConfigData.HelpPath
-    @ObservedObject var viewModel: ManageSubscriptionsViewModel
-
-    @Environment(\.appearance) private var appearance: CustomerCenterConfigData.Appearance
-
-    var body: some View {
-        AsyncButton(action: {
-            await self.viewModel.determineFlow(for: path)
-        }, label: {
-            if self.viewModel.loadingPath?.id == path.id {
-                TintedProgressView()
-            } else {
-                Text(path.title)
-            }
-        })
-        .disabled(self.viewModel.loadingPath != nil)
-    }
-
-}
-
 #if DEBUG
 @available(iOS 15.0, *)
 @available(macOS, unavailable)
@@ -215,7 +181,7 @@ struct ManageSubscriptionsView_Previews: PreviewProvider {
             CompatibilityNavigationStack {
                 let viewModelMonthlyRenewing = ManageSubscriptionsViewModel(
                     screen: CustomerCenterConfigTestData.customerCenterData.screens[.management]!,
-                    subscriptionInformation: CustomerCenterConfigTestData.subscriptionInformationMonthlyRenewing,
+                    purchaseInformation: CustomerCenterConfigTestData.subscriptionInformationMonthlyRenewing,
                     customerCenterActionHandler: nil,
                     refundRequestStatus: .success)
                 ManageSubscriptionsView(viewModel: viewModelMonthlyRenewing,
@@ -228,7 +194,7 @@ struct ManageSubscriptionsView_Previews: PreviewProvider {
             CompatibilityNavigationStack {
                 let viewModelYearlyExpiring = ManageSubscriptionsViewModel(
                     screen: CustomerCenterConfigTestData.customerCenterData.screens[.management]!,
-                    subscriptionInformation: CustomerCenterConfigTestData.subscriptionInformationYearlyExpiring,
+                    purchaseInformation: CustomerCenterConfigTestData.subscriptionInformationYearlyExpiring,
                     customerCenterActionHandler: nil)
                 ManageSubscriptionsView(viewModel: viewModelYearlyExpiring,
                                         customerCenterActionHandler: nil)
