@@ -21,6 +21,55 @@ import SwiftUI
 
 // swiftlint:disable identifier_name
 
+enum PreviewUIConfig {
+
+    static func make(
+        colors: [String: PaywallComponent.ColorInfo] = [:],
+        fonts: [String: UIConfig.FontsConfig] = [:]
+    ) -> UIConfig {
+        return .init(
+            app: .init(
+                colors: colors,
+                fonts: fonts
+            ),
+            localizations: [
+                "en_US": [
+                    "day": "day",
+                    "daily": "daily",
+                    "day_short": "day",
+                    "week": "week",
+                    "weekly": "weekly",
+                    "week_short": "wk",
+                    "month": "month",
+                    "monthly": "monthly",
+                    "month_short": "mo",
+                    "year": "year",
+                    "yearly": "yearly",
+                    "year_short": "yr",
+                    "annual": "annual",
+                    "annually": "annually",
+                    "annual_short": "yr",
+                    "free": "free",
+                    "percent": "%d%%",
+                    "num_day": "%d day",
+                    "num_week": "%d week",
+                    "num_month": "%d month",
+                    "num_year": "%d year",
+                    "num_days": "%d days",
+                    "num_weeks": "%d weeks",
+                    "num_months": "%d months",
+                    "num_years": "%d years"
+                ]
+            ],
+            variableConfig: .init(
+                variableCompatibilityMap: [:],
+                functionCompatibilityMap: [:]
+            )
+        )
+    }
+
+}
+
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 struct PreviewRequiredEnvironmentProperties: ViewModifier {
 
@@ -29,13 +78,16 @@ struct PreviewRequiredEnvironmentProperties: ViewModifier {
     let screenCondition: ScreenCondition
     let componentViewState: ComponentViewState
     let packageContext: PackageContext?
+    let colorScheme: ColorScheme
 
     func body(content: Content) -> some View {
         content
             .environmentObject(IntroOfferEligibilityContext(introEligibilityChecker: .default()))
+            .environmentObject(PurchaseHandler.default())
             .environmentObject(self.packageContext ?? Self.defaultPackageContext)
             .environment(\.screenCondition, screenCondition)
             .environment(\.componentViewState, componentViewState)
+            .environment(\.colorScheme, colorScheme)
     }
 
 }
@@ -45,12 +97,14 @@ extension View {
     func previewRequiredEnvironmentProperties(
         screenCondition: ScreenCondition = .compact,
         componentViewState: ComponentViewState = .default,
-        packageContext: PackageContext? = nil
+        packageContext: PackageContext? = nil,
+        colorScheme: ColorScheme = .light
     ) -> some View {
         self.modifier(PreviewRequiredEnvironmentProperties(
             screenCondition: screenCondition,
             componentViewState: componentViewState,
-            packageContext: packageContext
+            packageContext: packageContext,
+            colorScheme: colorScheme
         ))
     }
 }

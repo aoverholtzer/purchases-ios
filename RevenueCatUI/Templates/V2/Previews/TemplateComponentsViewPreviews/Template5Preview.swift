@@ -32,6 +32,8 @@ private enum Template5Preview {
     static let catImage = PaywallComponent.ImageComponent(
         source: .init(
             light: .init(
+                width: 750,
+                height: 530,
                 original: catUrl,
                 heic: catUrl,
                 heicLowRes: catUrl
@@ -210,6 +212,21 @@ private enum Template5Preview {
         backgroundColor: nil
     )
 
+    static let paywallComponents: Offering.PaywallComponents = .init(
+        uiConfig: .init(
+            app: .init(
+                colors: [:],
+                fonts: [:]
+            ),
+            localizations: [:],
+            variableConfig: .init(
+                variableCompatibilityMap: [:],
+                functionCompatibilityMap: [:]
+            )
+        ),
+        data: data
+    )
+
     static let data: PaywallComponentsData = .init(
         templateName: "components",
         assetBaseURL: URL(string: "https://assets.pawwalls.com")!,
@@ -253,7 +270,7 @@ struct Template5Preview_Previews: PreviewProvider {
 
         // Template 5
         PaywallsV2View(
-            paywallComponentsData: Template5Preview.data,
+            paywallComponents: Template5Preview.paywallComponents,
             offering: Offering(identifier: "default",
                                serverDescription: "",
                                availablePackages: [

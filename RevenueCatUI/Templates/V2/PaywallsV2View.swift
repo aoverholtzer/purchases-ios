@@ -37,21 +37,35 @@ struct PaywallsV2View: View {
     @Environment(\.horizontalSizeClass)
     private var horizontalSizeClass
 
+    @Environment(\.colorScheme)
+    private var colorScheme
+
+    @EnvironmentObject
+    private var purchaseHandler: PurchaseHandler
+
     @StateObject
     private var introOfferEligibilityContext: IntroOfferEligibilityContext
 
     @StateObject
     private var paywallStateManager: PaywallStateManager
 
+    private let paywallComponentsData: PaywallComponentsData
+    private let uiConfigProvider: UIConfigProvider
+    private let offering: Offering
     private let onDismiss: () -> Void
 
     public init(
-        paywallComponentsData: PaywallComponentsData,
+        paywallComponents: Offering.PaywallComponents,
         offering: Offering,
         introEligibilityChecker: TrialOrIntroEligibilityChecker,
         showZeroDecimalPlacePrices: Bool,
         onDismiss: @escaping () -> Void
     ) {
+        let uiConfigProvider = UIConfigProvider(uiConfig: paywallComponents.uiConfig)
+
+        self.paywallComponentsData = paywallComponents.data
+        self.uiConfigProvider = uiConfigProvider
+        self.offering = offering
         self.onDismiss = onDismiss
         self._introOfferEligibilityContext = .init(
             wrappedValue: .init(introEligibilityChecker: introEligibilityChecker)
@@ -66,8 +80,9 @@ struct PaywallsV2View: View {
         self._paywallStateManager = .init(
             wrappedValue: .init(state: Self.createPaywallState(
                 componentsConfig: componentsConfig,
-                componentsLocalizations: paywallComponentsData.componentsLocalizations,
-                defaultLocale: paywallComponentsData.defaultLocale,
+                componentsLocalizations: paywallComponents.data.componentsLocalizations,
+                defaultLocale: paywallComponents.data.defaultLocale,
+                uiConfigProvider: uiConfigProvider,
                 offering: offering,
                 introEligibilityChecker: introEligibilityChecker,
                 showZeroDecimalPlacePrices: showZeroDecimalPlacePrices
@@ -80,10 +95,23 @@ struct PaywallsV2View: View {
         case .success(let paywallState):
             LoadedPaywallsV2View(
                 paywallState: paywallState,
+                uiConfigProvider: self.uiConfigProvider,
                 onDismiss: self.onDismiss
             )
             .environment(\.screenCondition, ScreenCondition.from(self.horizontalSizeClass))
             .environmentObject(self.introOfferEligibilityContext)
+            .disabled(self.purchaseHandler.actionInProgress)
+            .onAppear {
+                self.purchaseHandler.trackPaywallImpression(
+                    self.createEventData()
+                )
+            }
+            .onDisappear { self.purchaseHandler.trackPaywallClose() }
+            .onChangeOf(self.purchaseHandler.purchased) { purchased in
+                if purchased {
+                    self.onDismiss()
+                }
+            }
             .task {
                 await self.introOfferEligibilityContext.computeEligibility(for: paywallState.packages)
             }
@@ -93,19 +121,32 @@ struct PaywallsV2View: View {
         }
     }
 
+    private func createEventData() -> PaywallEvent.Data {
+        return .init(
+            offering: self.offering,
+            paywallComponentsData: self.paywallComponentsData,
+            sessionID: .init(),
+            displayMode: .fullScreen,
+            locale: .current,
+            darkMode: self.colorScheme == .dark
+        )
+    }
+
 }
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 private struct LoadedPaywallsV2View: View {
 
     private let paywallState: PaywallState
+    private let uiConfigProvider: UIConfigProvider
     private let onDismiss: () -> Void
 
     @StateObject
     private var selectedPackageContext: PackageContext
 
-    init(paywallState: PaywallState, onDismiss: @escaping () -> Void) {
+    init(paywallState: PaywallState, uiConfigProvider: UIConfigProvider, onDismiss: @escaping () -> Void) {
         self.paywallState = paywallState
+        self.uiConfigProvider = uiConfigProvider
         self.onDismiss = onDismiss
 
         self._selectedPackageContext = .init(
@@ -128,7 +169,10 @@ private struct LoadedPaywallsV2View: View {
         }
         .environmentObject(self.selectedPackageContext)
         .frame(maxHeight: .infinity, alignment: .topLeading)
-        .backgroundStyle(self.paywallState.componentsConfig.background.backgroundStyle)
+        .backgroundStyle(
+            self.paywallState.componentsConfig.background.backgroundStyle,
+            uiConfigProvider: self.uiConfigProvider
+        )
         .edgesIgnoringSafeArea(.top)
     }
 
@@ -142,6 +186,7 @@ fileprivate extension PaywallsV2View {
         componentsConfig: PaywallComponentsData.PaywallComponentsConfig,
         componentsLocalizations: [PaywallComponent.LocaleID: PaywallComponent.LocalizationDictionary],
         defaultLocale: String,
+        uiConfigProvider: UIConfigProvider,
         offering: Offering,
         introEligibilityChecker: TrialOrIntroEligibilityChecker,
         showZeroDecimalPlacePrices: Bool
@@ -157,7 +202,8 @@ fileprivate extension PaywallsV2View {
             let root = try factory.toRootViewModel(
                 componentsConfig: componentsConfig,
                 offering: offering,
-                localizationProvider: localizationProvider
+                localizationProvider: localizationProvider,
+                uiConfigProvider: uiConfigProvider
             )
 
             // WIP: Maybe re-enable this later or add some warnings

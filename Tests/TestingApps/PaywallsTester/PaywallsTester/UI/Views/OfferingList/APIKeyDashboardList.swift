@@ -76,7 +76,9 @@ struct APIKeyDashboardList: View {
                             // Need to wait for the paywall sheet to be dismissed before presenting again.
                             // We cannot modify the presented paywall in-place because the paywall components are
                             // cached in a @StateObject on initialization time.
+                            #if DEBUG
                             await Task.sleep(seconds: 1)
+                            #endif
                             self.presentedPaywall = .init(offering: offering, mode: .default)
                         }
                     }
@@ -101,7 +103,7 @@ struct APIKeyDashboardList: View {
 
     private func templateGroupName(offering: Offering) -> String? {
         #if PAYWALL_COMPONENTS
-        offering.paywall?.templateName ?? offering.paywallComponentsData?.templateName
+        offering.paywall?.templateName ?? offering.paywallComponents?.data.templateName
         #else
         offering.paywall?.templateName
         #endif
@@ -127,7 +129,7 @@ struct APIKeyDashboardList: View {
 
     private func offeringHasComponents(_ offering: Offering) -> Bool {
         #if PAYWALL_COMPONENTS
-        offering.paywallComponentsData != nil
+        offering.paywallComponents != nil
         #else
         false
         #endif
@@ -179,6 +181,13 @@ struct APIKeyDashboardList: View {
                 .onRestoreCompleted { _ in
                     self.presentedPaywall = nil
                 }
+                #if PAYWALL_COMPONENTS
+                .onAppear {
+                    if let errorInfo = paywall.offering.paywallComponents?.data.errorInfo {
+                        print("Paywall V2 Error:", errorInfo.debugDescription)
+                    }
+                }
+                #endif
         }
     }
 
@@ -211,7 +220,7 @@ struct APIKeyDashboardList: View {
                     Text(self.offering.serverDescription)
                     Spacer()
                     #if PAYWALL_COMPONENTS
-                    if let errorInfo = self.offering.paywallComponentsData?.errorInfo, !errorInfo.isEmpty {
+                    if let errorInfo = self.offering.paywallComponents?.data.errorInfo, !errorInfo.isEmpty {
                         Image(systemName: "exclamationmark.circle.fill")
                             .foregroundStyle(Color.red)
                     }

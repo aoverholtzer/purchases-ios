@@ -24,13 +24,19 @@ class ImageComponentViewModel {
     private var introOfferEligibilityContext: IntroOfferEligibilityContext
 
     private let localizationProvider: LocalizationProvider
+    private let uiConfigProvider: UIConfigProvider
     private let component: PaywallComponent.ImageComponent
 
     private let imageInfo: PaywallComponent.ThemeImageUrls
     private let presentedOverrides: PresentedOverrides<LocalizedImagePartial>?
 
-    init(localizationProvider: LocalizationProvider, component: PaywallComponent.ImageComponent) throws {
+    init(
+        localizationProvider: LocalizationProvider,
+        uiConfigProvider: UIConfigProvider,
+        component: PaywallComponent.ImageComponent
+    ) throws {
         self.localizationProvider = localizationProvider
+        self.uiConfigProvider = uiConfigProvider
         self.component = component
 
         if let overrideSourceLid = component.overrideSourceLid {
@@ -118,6 +124,10 @@ extension LocalizedImagePartial {
 struct ImageComponentStyle {
 
     let visible: Bool
+    let widthLight: Int
+    let heightLight: Int
+    let widthDark: Int?
+    let heightDark: Int?
     let url: URL
     let lowResUrl: URL?
     let darkUrl: URL?
@@ -136,6 +146,10 @@ struct ImageComponentStyle {
         gradientColors: [PaywallComponent.ColorHex]? = nil
     ) {
         self.visible = visible
+        self.widthLight = source.light.width
+        self.heightLight = source.light.height
+        self.widthDark = source.dark?.width
+        self.heightDark = source.dark?.height
         self.url = source.light.heic
         self.lowResUrl = source.light.heicLowRes
         self.darkUrl = source.dark?.heic

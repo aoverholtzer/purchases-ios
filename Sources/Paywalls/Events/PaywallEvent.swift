@@ -30,6 +30,10 @@ public enum PaywallEvent: FeatureEvent {
         return .paywalls
     }
 
+    var eventDiscriminator: String? {
+        return nil
+    }
+
     /// A `PaywallView` was displayed.
     case impression(CreationData, Data)
 
@@ -57,6 +61,7 @@ extension PaywallEvent {
             self.id = id
             self.date = date
         }
+        // swiftlint:enable missing_docs
 
     }
 
@@ -74,6 +79,27 @@ extension PaywallEvent {
         public var displayMode: PaywallViewMode
         public var localeIdentifier: String
         public var darkMode: Bool
+
+        #if PAYWALL_COMPONENTS
+        @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+        public init(
+            offering: Offering,
+            paywallComponentsData: PaywallComponentsData,
+            sessionID: SessionID,
+            displayMode: PaywallViewMode,
+            locale: Locale,
+            darkMode: Bool
+        ) {
+            self.init(
+                offeringIdentifier: offering.identifier,
+                paywallRevision: paywallComponentsData.revision,
+                sessionID: sessionID,
+                displayMode: displayMode,
+                localeIdentifier: locale.identifier,
+                darkMode: darkMode
+            )
+        }
+        #endif
 
         @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
         public init(

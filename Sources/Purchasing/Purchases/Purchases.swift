@@ -1242,7 +1242,6 @@ public extension Purchases {
         }
     }
 
-    /// Warning: This is currently experimental and subject to change.
     func redeemWebPurchase(
         webPurchaseRedemption: WebPurchaseRedemption,
         completion: @escaping (CustomerInfo?, PublicError?) -> Void
@@ -1251,7 +1250,6 @@ public extension Purchases {
                                                      completion: completion)
     }
 
-    /// Warning: This is currently experimental and subject to change.
     func redeemWebPurchase(_ webPurchaseRedemption: WebPurchaseRedemption) async -> WebPurchaseRedemptionResult {
         return await self.purchasesOrchestrator.redeemWebPurchase(webPurchaseRedemption)
     }
@@ -1271,13 +1269,15 @@ public extension Purchases {
     }
 
     /// Used by `RevenueCatUI` to keep track of ``CustomerCenterEvent``s.
-    func track(customerCenterEvent: CustomerCenterEvent) {
+    func track(customerCenterEvent: any CustomerCenterEventType) {
         operationDispatcher.dispatchOnWorkerThread {
-            await self.paywallEventsManager?.track(featureEvent: customerCenterEvent)
+            // If we make CustomerCenterEventType implement FeatureEvent, we have to make FeatureEvent public
+            guard let event = customerCenterEvent as? FeatureEvent else { return }
+            await self.paywallEventsManager?.track(featureEvent: event)
         }
     }
 
-    /// Used by `RevenueCatUI` to download customer center data
+    /// Used by `RevenueCatUI` to download Customer Center data
     func loadCustomerCenter() async throws -> CustomerCenterConfigData {
         let response = try await Async.call { completion in
             self.backend.customerCenterConfig.getCustomerCenterConfig(appUserID: self.appUserID,

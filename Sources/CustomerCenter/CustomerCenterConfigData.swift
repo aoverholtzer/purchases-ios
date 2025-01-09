@@ -122,7 +122,7 @@ public struct CustomerCenterConfigData {
                 case .billingCycle:
                     return "Billing cycle"
                 case .currentPrice:
-                    return "Current price"
+                    return "Price"
                 case .expired:
                     return "Expired"
                 case .expires:
@@ -134,7 +134,7 @@ public struct CustomerCenterConfigData {
                 case .refundErrorGeneric:
                     return "An error occurred while processing the refund request. Please try again."
                 case .refundGranted:
-                    return "Refund granted successfully!"
+                    return "Refund requested"
                 case .refundStatus:
                     return "Refund status"
                 case .subEarliestExpiration:
@@ -412,9 +412,14 @@ public struct CustomerCenterConfigData {
     public struct Support {
 
         public let email: String
+        public let shouldWarnCustomerToUpdate: Bool
 
-        public init(email: String) {
+        public init(
+            email: String,
+            shouldWarnCustomerToUpdate: Bool
+        ) {
             self.email = email
+            self.shouldWarnCustomerToUpdate = shouldWarnCustomerToUpdate
         }
 
     }
@@ -550,6 +555,9 @@ extension CustomerCenterConfigData.Support {
 
     init(from response: CustomerCenterConfigResponse.Support) {
         self.email = response.email
+        self.shouldWarnCustomerToUpdate = response.shouldWarnCustomerToUpdate ?? true
     }
 
 }
+
+extension CustomerCenterConfigData.HelpPath.PathType: Sendable, Codable {}

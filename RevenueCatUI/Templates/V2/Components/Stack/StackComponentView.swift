@@ -90,13 +90,11 @@ struct StackComponentView: View {
         }
         .padding(style.padding)
         .padding(additionalPadding)
-        .backgroundStyle(style.backgroundStyle)
         .shape(border: style.border,
-               shape: style.shape)
-        .applyIfLet(style.shadow) { view, shadow in
-            // Without compositingGroup(), the shadow is applied to the stack's children as well.
-            view.compositingGroup().shadow(shadow: shadow)
-        }
+               shape: style.shape,
+               shadow: style.shadow,
+               background: style.backgroundStyle,
+               uiConfigProvider: self.viewModel.uiConfigProvider)
         .padding(style.margin)
     }
 
@@ -449,13 +447,15 @@ fileprivate extension StackComponentViewModel {
                 component: component,
                 packageValidator: validator,
                 offering: offering,
-                localizationProvider: localizationProvider
+                localizationProvider: localizationProvider,
+                uiConfigProvider: .init(uiConfig: PreviewUIConfig.make())
             )
         }
 
         try self.init(
             component: component,
-            viewModels: viewModels
+            viewModels: viewModels,
+            uiConfigProvider: .init(uiConfig: PreviewUIConfig.make())
         )
     }
 

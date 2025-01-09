@@ -25,8 +25,6 @@ import SwiftUI
 #endif
 extension View {
 
-    /// Warning: This is currently in beta and subject to change.
-    ///
     /// Presents the ``CustomerCenter``.
     /// Example:
     /// ```swift
@@ -44,7 +42,7 @@ extension View {
         isPresented: Binding<Bool>,
         customerCenterActionHandler: CustomerCenterActionHandler? = nil,
         presentationMode: CustomerCenterPresentationMode = .default,
-        onDismiss: @escaping () -> Void
+        onDismiss: (() -> Void)? = nil
     ) -> some View {
         return self.modifier(PresentingCustomerCenterModifier(
             isPresented: isPresented,
@@ -65,11 +63,11 @@ private struct PresentingCustomerCenterModifier: ViewModifier {
 
     let customerCenterActionHandler: CustomerCenterActionHandler?
     let presentationMode: CustomerCenterPresentationMode
-    let onDismiss: (() -> Void)
+    let onDismiss: (() -> Void)?
 
     init(
         isPresented: Binding<Bool>,
-        onDismiss: @escaping () -> Void,
+        onDismiss: (() -> Void)?,
         myAppPurchaseLogic: MyAppPurchaseLogic?,
         customerCenterActionHandler: CustomerCenterActionHandler?,
         presentationMode: CustomerCenterPresentationMode,

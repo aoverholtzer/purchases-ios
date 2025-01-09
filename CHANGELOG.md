@@ -1,3 +1,90 @@
+## 5.14.5
+## RevenueCat SDK
+### 🐞 Bugfixes
+* add `fr_FR` localization (#4624) via Andy Boedo (@aboedo)
+
+## RevenueCatUI SDK
+### Paywallv2
+#### 🐞 Bugfixes
+* [Paywalls V2] Fix analytics and dismiss (#4620) via Josh Holtz (@joshdholtz)
+
+### 🔄 Other Changes
+* [Paywalls V2] Added fallback components (#4621) via Josh Holtz (@joshdholtz)
+
+## 5.14.4
+## RevenueCatUI SDK
+### Paywallv2
+#### 🐞 Bugfixes
+* [Paywalls V2] Fix current offering and sticky footer (#4617) via Josh Holtz (@joshdholtz)
+### Customer Center
+#### 🐞 Bugfixes
+* Use SK2 RenewalInfo to get renewal prices & currency (#4608) via Will Taylor (@fire-at-will)
+
+### 🔄 Other Changes
+* Add Comment to StoreKit2ObserverModePurchaseDetectorTests (#4614) via Will Taylor (@fire-at-will)
+* Fixing text, image, and footer render issues (#4607) via Josh Holtz (@joshdholtz)
+
+## 5.14.3
+## RevenueCatUI SDK
+### Customer Center
+#### 🐞 Bugfixes
+* Fix loading Customer Center when entitlement is granted by another Apple app (#4603) via Cesar de la Vega (@vegaro)
+
+### 🔄 Other Changes
+* Use #fileID instead of #file to avoid including the full path in the compiled binary (#4605) via Mark Villacampa (@MarkVillacampa)
+
+## 5.14.2
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Revert "Always call readyForPromotedProduct on the main actor" (#4599) via Will Taylor (@fire-at-will)
+
+### 🔄 Other Changes
+* [Paywalls] Fix issues with rounded corners and borders (#4594) via Mark Villacampa (@MarkVillacampa)
+
+## 5.14.1
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Always call readyForPromotedProduct on the main actor (#4584) via Will Taylor (@fire-at-will)
+
+### 🔄 Other Changes
+* [WEB-1757] Handle new backend error codes that may show in the redemption endpoint (#4592) via Toni Rico (@tonidero)
+* Update refund granted default string (#4588) via Will Taylor (@fire-at-will)
+* Make web Redemption Link APIs stable (#4591) via Toni Rico (@tonidero)
+* Dont show refund cancelled message when user cancels refund (#4587) via Will Taylor (@fire-at-will)
+* Remove extra beta Customer Center docs (#4585) via Cesar de la Vega (@vegaro)
+* [Paywalls V2] Fix border being hidden by next sibling component (#4523) via Josh Holtz (@joshdholtz)
+
+## 5.14.0
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Support non-JSON object decodable values in `getMetadataValue` (#4555) via Cody Kerns (@codykerns)
+
+## RevenueCatUI SDK
+### Customer Center
+#### ✨ New Features
+* Support toggling update warnings & show update in restore flow (#4571) via Will Taylor (@fire-at-will)
+* Add feedback survey option chosen event (#4528) via Cesar de la Vega (@vegaro)
+* Expose Customer Center to UIKit (#4560) via Will Taylor (@fire-at-will)
+* [Customer Center] Slight improvement to the Customer Center Promotional Offer view (#4554) via Andy Boedo (@aboedo)
+#### 🐞 Bugfixes
+* Calculate restore results based on presence of purchases (#4576) via Will Taylor (@fire-at-will)
+* Always reload customerInfo when Customer Center is loaded (#4575) via Will Taylor (@fire-at-will)
+* Make presentCustomerCenter's onDismiss optional (#4573) via Will Taylor (@fire-at-will)
+* Fix hardcoded title in WrongPlatformView (#4569) via Cesar de la Vega (@vegaro)
+* Fix wrong discriminator on `CustomerCenterAnswerSubmittedEvent` (#4566) via Cesar de la Vega (@vegaro)
+
+### 🔄 Other Changes
+* Add ErrorView to CustomerCenter (#4574) via Cesar de la Vega (@vegaro)
+* Address ConfirmationDialog SwiftUI error log message (#4577) via Will Taylor (@fire-at-will)
+* Refactors the creation of the subscription details in Customer Center (#4515) via Cesar de la Vega (@vegaro)
+* [Paywals] Update paywalls tester Package.resolved (#4570) via Mark Villacampa (@MarkVillacampa)
+* [Paywalls] Fix iOS 13/14 tests (#4568) via Mark Villacampa (@MarkVillacampa)
+* Customer Center DocC updates (#4564) via Will Taylor (@fire-at-will)
+* Fix paywalls tester build in `main` (#4565) via Cesar de la Vega (@vegaro)
+* Hide mode from public init in `CustomerCenterView` (#4563) via Cesar de la Vega (@vegaro)
+* [EXTERNAL] Polished the Polish translation (#4496) via @miszu (#4556) via JayShortway (@JayShortway)
+* Revert "Remove PaywallsTesterTests" (#4557) via Cesar de la Vega (@vegaro)
+
 ## 5.13.0
 ## RevenueCat SDK
 ### ✨ New Features
