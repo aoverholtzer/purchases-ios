@@ -14,28 +14,34 @@
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
-private typealias PresentedStackPartial = PaywallComponent.PartialStackComponent
+typealias PresentedStackPartial = PaywallComponent.PartialStackComponent
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 class StackComponentViewModel {
 
-    private let component: PaywallComponent.StackComponent
+    let component: PaywallComponent.StackComponent
     let uiConfigProvider: UIConfigProvider
     private let presentedOverrides: PresentedOverrides<PresentedStackPartial>?
 
     let viewModels: [PaywallComponentViewModel]
+    let badgeViewModels: [PaywallComponentViewModel]
+    let shouldApplySafeAreaInset: Bool
 
     init(
         component: PaywallComponent.StackComponent,
         viewModels: [PaywallComponentViewModel],
-        uiConfigProvider: UIConfigProvider
+        badgeViewModels: [PaywallComponentViewModel],
+        shouldApplySafeAreaInset: Bool = false,
+        uiConfigProvider: UIConfigProvider,
+        localizationProvider: LocalizationProvider
     ) throws {
         self.component = component
         self.viewModels = viewModels
         self.uiConfigProvider = uiConfigProvider
-
+        self.badgeViewModels = badgeViewModels
+        self.shouldApplySafeAreaInset = shouldApplySafeAreaInset
         self.presentedOverrides = try self.component.overrides?.toPresentedOverrides { $0 }
     }
 
@@ -44,7 +50,7 @@ class StackComponentViewModel {
         state: ComponentViewState,
         condition: ScreenCondition,
         isEligibleForIntroOffer: Bool,
-        apply: @escaping (StackComponentStyle) -> some View
+        @ViewBuilder apply: @escaping (StackComponentStyle) -> some View
     ) -> some View {
         let partial = PresentedStackPartial.buildPartial(
             state: state,
@@ -55,16 +61,20 @@ class StackComponentViewModel {
 
         let style = StackComponentStyle(
             uiConfigProvider: self.uiConfigProvider,
-            visible: partial?.visible ?? true,
+            badgeViewModels: self.badgeViewModels,
+            visible: partial?.visible ?? self.component.visible ?? true,
             dimension: partial?.dimension ?? self.component.dimension,
             size: partial?.size ?? self.component.size,
             spacing: partial?.spacing ?? self.component.spacing,
             backgroundColor: partial?.backgroundColor ?? self.component.backgroundColor,
+            background: partial?.background ?? self.component.background,
             padding: partial?.padding ?? self.component.padding,
             margin: partial?.margin ?? self.component.margin,
             shape: partial?.shape ?? self.component.shape,
             border: partial?.border ?? self.component.border,
-            shadow: partial?.shadow ?? self.component.shadow
+            shadow: partial?.shadow ?? self.component.shadow,
+            badge: partial?.badge ?? self.component.badge,
+            overflow: partial?.overflow ?? self.component.overflow
         )
 
         apply(style)
@@ -74,19 +84,35 @@ class StackComponentViewModel {
 
 extension PresentedStackPartial: PresentedPartial {
 
-    static func combine(_ base: Self?, with other: Self?) -> Self {
+    static func combine(
+        _ base: PaywallComponent.PartialStackComponent?,
+        with other: PaywallComponent.PartialStackComponent?
+    ) -> Self {
+
+        let visible = other?.visible ?? base?.visible
+        let dimension = other?.dimension ?? base?.dimension
+        let size = other?.size ?? base?.size
+        let spacing = other?.spacing ?? base?.spacing
+        let background = other?.background ?? base?.background
+        let backgroundColor = other?.backgroundColor ?? base?.backgroundColor
+        let padding = other?.padding ?? base?.padding
+        let margin = other?.margin ?? base?.margin
+        let shape = other?.shape ?? base?.shape
+        let border = other?.border ?? base?.border
+        let shadow = other?.shadow ?? base?.shadow
 
         return .init(
-            visible: other?.visible ?? base?.visible,
-            dimension: other?.dimension ?? base?.dimension,
-            size: other?.size ?? base?.size,
-            spacing: other?.spacing ?? base?.spacing,
-            backgroundColor: other?.backgroundColor ?? base?.backgroundColor,
-            padding: other?.padding ?? base?.padding,
-            margin: other?.margin ?? base?.margin,
-            shape: other?.shape ?? base?.shape,
-            border: other?.border ?? base?.border,
-            shadow: other?.shadow ?? base?.shadow
+            visible: visible,
+            dimension: dimension,
+            size: size,
+            spacing: spacing,
+            backgroundColor: backgroundColor,
+            background: background,
+            padding: padding,
+            margin: margin,
+            shape: shape,
+            border: border,
+            shadow: shadow
         )
     }
 
@@ -109,30 +135,50 @@ struct StackComponentStyle {
     let shape: ShapeModifier.Shape?
     let border: ShapeModifier.BorderInfo?
     let shadow: ShadowModifier.ShadowInfo?
+    let badge: BadgeModifier.BadgeInfo?
+    let scrollable: Bool?
 
     init(
         uiConfigProvider: UIConfigProvider,
+        badgeViewModels: [PaywallComponentViewModel],
         visible: Bool,
         dimension: PaywallComponent.Dimension,
         size: PaywallComponent.Size,
         spacing: CGFloat?,
         backgroundColor: PaywallComponent.ColorScheme?,
+        background: PaywallComponent.Background?,
         padding: PaywallComponent.Padding,
         margin: PaywallComponent.Padding,
         shape: PaywallComponent.Shape?,
         border: PaywallComponent.Border?,
-        shadow: PaywallComponent.Shadow?
+        shadow: PaywallComponent.Shadow?,
+        badge: PaywallComponent.Badge?,
+        overflow: PaywallComponent.StackComponent.Overflow?
     ) {
         self.visible = visible
         self.dimension = dimension
         self.size = size
         self.spacing = spacing
-        self.backgroundStyle = backgroundColor?.backgroundStyle
+        self.backgroundStyle = background?.asDisplayable(uiConfigProvider: uiConfigProvider).backgroundStyle ??
+            backgroundColor?.asDisplayable(uiConfigProvider: uiConfigProvider).backgroundStyle
         self.padding = padding.edgeInsets
         self.margin = margin.edgeInsets
         self.shape = shape?.shape
         self.border = border?.border(uiConfigProvider: uiConfigProvider)
         self.shadow = shadow?.shadow(uiConfigProvider: uiConfigProvider)
+        self.badge = badge?.badge(stackShape: self.shape,
+                                  stackBorder: self.border,
+                                  badgeViewModels: badgeViewModels,
+                                  uiConfigProvider: uiConfigProvider)
+
+        self.scrollable = overflow.flatMap({ overflow in
+            switch overflow {
+            case .default:
+                return false
+            case .scroll:
+                return true
+            }
+        })
     }
 
     var vstackStrategy: StackStrategy {
@@ -161,54 +207,6 @@ struct StackComponentStyle {
         case .spaceBetween, .spaceAround, .spaceEvenly:
             return .flex
         }
-    }
-
-}
-
-@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-private extension PaywallComponent.Shape {
-
-    var shape: ShapeModifier.Shape? {
-        switch self {
-        case .rectangle(let cornerRadiuses):
-            let corners = cornerRadiuses.flatMap { cornerRadiuses in
-                ShapeModifier.RadiusInfo(
-                    topLeft: cornerRadiuses.topLeading,
-                    topRight: cornerRadiuses.topTrailing,
-                    bottomLeft: cornerRadiuses.bottomLeading,
-                    bottomRight: cornerRadiuses.bottomTrailing
-                )
-            }
-            return .rectangle(corners)
-        case .pill:
-            return .pill
-        }
-    }
-
-}
-
-@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-private extension PaywallComponent.Border {
-
-    func border(uiConfigProvider: UIConfigProvider) -> ShapeModifier.BorderInfo? {
-        return ShapeModifier.BorderInfo(
-            color: self.color.toDynamicColor(uiConfigProvider: uiConfigProvider),
-            width: self.width
-        )
-    }
-
-}
-
-@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-private extension PaywallComponent.Shadow {
-
-    func shadow(uiConfigProvider: UIConfigProvider) -> ShadowModifier.ShadowInfo? {
-        return ShadowModifier.ShadowInfo(
-            color: self.color.toDynamicColor(uiConfigProvider: uiConfigProvider),
-            radius: self.radius,
-            x: self.x,
-            y: self.y
-        )
     }
 
 }

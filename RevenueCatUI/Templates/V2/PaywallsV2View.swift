@@ -4,12 +4,12 @@
 //
 //  Created by Josh Holtz on 6/11/24.
 //
-// swiftlint:disable missing_docs
+// swiftlint:disable missing_docs file_length
 
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 private class PaywallStateManager: ObservableObject {
@@ -26,9 +26,54 @@ private struct PaywallState {
     let componentsConfig: PaywallComponentsData.PaywallComponentsConfig
     let viewModelFactory: ViewModelFactory
     let packages: [Package]
-    let componentViewModel: PaywallComponentViewModel
+    let rootViewModel: RootViewModel
     let showZeroDecimalPlacePrices: Bool
 
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+struct DataForV1DefaultPaywall {
+
+    let offering: Offering
+    let activelySubscribedProductIdentifiers: Set<String>
+    let paywall: PaywallData
+    let template: PaywallTemplate
+    let mode: PaywallViewMode
+    let fonts: PaywallFontProvider
+    let displayCloseButton: Bool
+    let introEligibility: TrialOrIntroEligibilityChecker
+    let purchaseHandler: PurchaseHandler
+    let locale: Locale
+    let showZeroDecimalPlacePrices: Bool
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+enum FallbackContent {
+    case paywallV1View(DataForV1DefaultPaywall)
+    case customView(AnyView)
+
+    @ViewBuilder
+    func view() -> some View {
+        switch self {
+        case .paywallV1View(let data):
+            LoadedOfferingPaywallView(
+                offering: data.offering,
+                activelySubscribedProductIdentifiers: data.activelySubscribedProductIdentifiers,
+                paywall: data.paywall,
+                template: data.template,
+                mode: data.mode,
+                fonts: data.fonts,
+                displayCloseButton: data.displayCloseButton,
+                introEligibility: data.introEligibility,
+                purchaseHandler: data.purchaseHandler,
+                locale: data.locale,
+                showZeroDecimalPlacePrices: data.showZeroDecimalPlacePrices
+            )
+        case .customView(let view):
+            view
+        }
+    }
 }
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
@@ -40,9 +85,6 @@ struct PaywallsV2View: View {
     @Environment(\.colorScheme)
     private var colorScheme
 
-    @EnvironmentObject
-    private var purchaseHandler: PurchaseHandler
-
     @StateObject
     private var introOfferEligibilityContext: IntroOfferEligibilityContext
 
@@ -52,21 +94,27 @@ struct PaywallsV2View: View {
     private let paywallComponentsData: PaywallComponentsData
     private let uiConfigProvider: UIConfigProvider
     private let offering: Offering
+    private let purchaseHandler: PurchaseHandler
     private let onDismiss: () -> Void
+    private let fallbackContent: FallbackContent
 
     public init(
         paywallComponents: Offering.PaywallComponents,
         offering: Offering,
+        purchaseHandler: PurchaseHandler,
         introEligibilityChecker: TrialOrIntroEligibilityChecker,
         showZeroDecimalPlacePrices: Bool,
-        onDismiss: @escaping () -> Void
+        onDismiss: @escaping () -> Void,
+        fallbackContent: FallbackContent
     ) {
         let uiConfigProvider = UIConfigProvider(uiConfig: paywallComponents.uiConfig)
 
         self.paywallComponentsData = paywallComponents.data
         self.uiConfigProvider = uiConfigProvider
         self.offering = offering
+        self.purchaseHandler = purchaseHandler
         self.onDismiss = onDismiss
+        self.fallbackContent = fallbackContent
         self._introOfferEligibilityContext = .init(
             wrappedValue: .init(introEligibilityChecker: introEligibilityChecker)
         )
@@ -91,34 +139,76 @@ struct PaywallsV2View: View {
     }
 
     public var body: some View {
-        switch self.paywallStateManager.state {
-        case .success(let paywallState):
-            LoadedPaywallsV2View(
-                paywallState: paywallState,
-                uiConfigProvider: self.uiConfigProvider,
-                onDismiss: self.onDismiss
+        if let errorInfo = self.paywallComponentsData.errorInfo, !errorInfo.isEmpty {
+            // Show fallback paywall and debug error message that
+            // occurred while decoding the paywall
+            self.fallbackViewWithErrorMessage(
+                "Error decoding paywall response on: \(errorInfo.keys.joined(separator: ", "))"
             )
-            .environment(\.screenCondition, ScreenCondition.from(self.horizontalSizeClass))
-            .environmentObject(self.introOfferEligibilityContext)
-            .disabled(self.purchaseHandler.actionInProgress)
-            .onAppear {
-                self.purchaseHandler.trackPaywallImpression(
-                    self.createEventData()
+        } else {
+            switch self.paywallStateManager.state {
+            case .success(let paywallState):
+                LoadedPaywallsV2View(
+                    paywallState: paywallState,
+                    uiConfigProvider: self.uiConfigProvider,
+                    onDismiss: self.onDismiss
+                )
+                .environment(\.screenCondition, ScreenCondition.from(self.horizontalSizeClass))
+                .environmentObject(self.purchaseHandler)
+                .environmentObject(self.introOfferEligibilityContext)
+                .disabled(self.purchaseHandler.actionInProgress)
+                .onAppear {
+                    self.purchaseHandler.trackPaywallImpression(
+                        self.createEventData()
+                    )
+                }
+                .onDisappear { self.purchaseHandler.trackPaywallClose() }
+                .onChangeOf(self.purchaseHandler.purchased) { purchased in
+                    if purchased {
+                        self.onDismiss()
+                    }
+                }
+                .task {
+                    await self.introOfferEligibilityContext.computeEligibility(for: paywallState.packages)
+                }
+                // Note: preferences need to be applied after `.toolbar` call
+                .preference(key: PurchaseInProgressPreferenceKey.self,
+                            value: self.purchaseHandler.packageBeingPurchased)
+                .preference(key: PurchasedResultPreferenceKey.self,
+                            value: .init(data: self.purchaseHandler.purchaseResult))
+                .preference(key: RestoredCustomerInfoPreferenceKey.self,
+                            value: self.purchaseHandler.restoredCustomerInfo)
+                .preference(key: RestoreInProgressPreferenceKey.self,
+                            value: self.purchaseHandler.restoreInProgress)
+                .preference(key: PurchaseErrorPreferenceKey.self,
+                            value: self.purchaseHandler.purchaseError as NSError?)
+                .preference(key: RestoreErrorPreferenceKey.self,
+                            value: self.purchaseHandler.restoreError as NSError?)
+            case .failure(let error):
+                // Show fallback paywall and debug error message that
+                // occurred while validating data and view models
+                self.fallbackViewWithErrorMessage(
+                    "Error validating paywall: \(error.localizedDescription)"
                 )
             }
-            .onDisappear { self.purchaseHandler.trackPaywallClose() }
-            .onChangeOf(self.purchaseHandler.purchased) { purchased in
-                if purchased {
-                    self.onDismiss()
-                }
-            }
-            .task {
-                await self.introOfferEligibilityContext.computeEligibility(for: paywallState.packages)
-            }
-        case .failure:
-            // WIP: Need to use fallback paywall
-            Text("Error creating paywall")
         }
+    }
+
+    @ViewBuilder
+    func fallbackViewWithErrorMessage(_ errorMessage: String) -> some View {
+        let fullMessage = """
+        \(errorMessage)
+        Validate your paywall is correct in the RevenueCat dashboard,
+        update your SDK, or contact RevenueCat support.
+        View console logs for full detail.
+        The displayed paywall contains default configuration.
+        This error will be hidden in production.
+        """
+
+        DebugErrorView(
+            fullMessage,
+            replacement: self.fallbackContent.view()
+        )
     }
 
     private func createEventData() -> PaywallEvent.Data {
@@ -161,21 +251,45 @@ private struct LoadedPaywallsV2View: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            ComponentsView(
-                componentViewModels: [paywallState.componentViewModel],
-                onDismiss: self.onDismiss
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                ComponentsView(
+                    componentViewModels: [.root(paywallState.rootViewModel)],
+                    onDismiss: self.onDismiss
+                )
+            }
+            // Used for header image and sticky footer
+            .environment(\.safeAreaInsets, proxy.safeAreaInsets)
+            // If the first view in the first stack is an image,
+            // we will ignore safe area pass the safe area insets in to environment
+            // If the image is in a ZStack, the ZStack will push non-images
+            // down with the inset
+            .applyIf(paywallState.rootViewModel.firstImageInfo != nil, apply: { view in
+                view
+                    .edgesIgnoringSafeArea(.top)
+            })
+            .environmentObject(self.selectedPackageContext)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+            .backgroundStyle(
+                self.paywallState.componentsConfig.background
+                    .asDisplayable(uiConfigProvider: uiConfigProvider).backgroundStyle
             )
+            .edgesIgnoringSafeArea(.bottom)
         }
-        .environmentObject(self.selectedPackageContext)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .backgroundStyle(
-            self.paywallState.componentsConfig.background.backgroundStyle,
-            uiConfigProvider: self.uiConfigProvider
-        )
-        .edgesIgnoringSafeArea(.top)
     }
 
+}
+
+/// Custom EnvironmentKey for safe area insets
+private struct SafeAreaInsetsKey: EnvironmentKey {
+    static let defaultValue: EdgeInsets = EdgeInsets()
+}
+
+extension EnvironmentValues {
+    var safeAreaInsets: EdgeInsets {
+        get { self[SafeAreaInsetsKey.self] }
+        set { self[SafeAreaInsetsKey.self] = newValue }
+    }
 }
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
@@ -219,7 +333,7 @@ fileprivate extension PaywallsV2View {
                     componentsConfig: componentsConfig,
                     viewModelFactory: factory,
                     packages: packages,
-                    componentViewModel: .root(root),
+                    rootViewModel: root,
                     showZeroDecimalPlacePrices: showZeroDecimalPlacePrices
                 )
             )
@@ -252,9 +366,9 @@ fileprivate extension PaywallsV2View {
         let chosenLocale = Self.preferredLocale(from: paywallLocales) ?? defaultLocale
 
         // STEP 3: Get localization for one of preferred locales in order
-        if let localizedStrings = componentsLocalizations[chosenLocale.identifier] {
+        if let localizedStrings = componentsLocalizations.findLocale(chosenLocale) {
             return .init(locale: chosenLocale, localizedStrings: localizedStrings)
-        } else if let localizedStrings = componentsLocalizations[defaultLocale.identifier] {
+        } else if let localizedStrings = componentsLocalizations.findLocale(defaultLocale) {
             Logger.error(Strings.paywall_could_not_find_localization("\(chosenLocale)"))
             return .init(locale: defaultLocale, localizedStrings: localizedStrings)
         } else {
@@ -308,37 +422,6 @@ fileprivate extension PaywallsV2View {
 
         return nil
     }
-}
-
-fileprivate extension Locale {
-
-    static var preferredLocales: [Self] {
-        return Self.preferredLanguages.map(Locale.init(identifier:))
-    }
-
-    func matchesLanguage(_ rhs: Locale) -> Bool {
-        self.removingRegion == rhs.removingRegion
-    }
-
-    // swiftlint:disable:next identifier_name
-    var rc_languageCode: String? {
-        #if swift(>=5.9)
-        // `Locale.languageCode` is deprecated
-        if #available(macOS 13, iOS 16, tvOS 16, watchOS 9, visionOS 1.0, *) {
-            return self.language.languageCode?.identifier
-        } else {
-            return self.languageCode
-        }
-        #else
-        return self.languageCode
-        #endif
-    }
-
-    /// - Returns: the same locale as `self` but removing its region.
-    private var removingRegion: Self? {
-        return self.rc_languageCode.map(Locale.init(identifier:))
-    }
-
 }
 
 #endif

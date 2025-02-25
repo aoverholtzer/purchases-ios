@@ -14,7 +14,7 @@
 import Foundation
 import RevenueCat
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 struct UIConfigProvider {
 
@@ -24,7 +24,11 @@ struct UIConfigProvider {
         self.uiConfig = uiConfig
     }
 
-    func getColor(for name: String) -> PaywallComponent.ColorInfo? {
+    var variableConfig: UIConfig.VariableConfig {
+        return self.uiConfig.variableConfig
+    }
+
+    func getColor(for name: String) -> PaywallComponent.ColorScheme? {
         return self.uiConfig.app.colors[name]
     }
 
@@ -46,7 +50,7 @@ struct UIConfigProvider {
     }
 
     func getLocalizations(for locale: Locale) -> [String: String] {
-        guard let localizations = self.uiConfig.localizations[locale.identifier] else {
+        guard let localizations = self.uiConfig.localizations.findLocale(locale) else {
             Logger.error("Could not find localizations for '\(locale.identifier)'")
             return [:]
         }

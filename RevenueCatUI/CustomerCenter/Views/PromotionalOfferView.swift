@@ -25,15 +25,19 @@ import SwiftUI
 @available(watchOS, unavailable)
 struct PromotionalOfferView: View {
 
-    @StateObject
-    private var viewModel: PromotionalOfferViewModel
-    @Environment(\.localization)
-    private var localization: CustomerCenterConfigData.Localization
     @Environment(\.appearance)
     private var appearance: CustomerCenterConfigData.Appearance
+
     @Environment(\.colorScheme)
     private var colorScheme
+
+    @Environment(\.localization)
+    private var localization: CustomerCenterConfigData.Localization
+
     @State private var isLoading: Bool = false
+
+    @StateObject
+    private var viewModel: PromotionalOfferViewModel
 
     private let onDismissPromotionalOfferView: (PromotionalOfferViewAction) -> Void
 
@@ -82,7 +86,7 @@ struct PromotionalOfferView: View {
                     Button {
                         self.dismissPromotionalOfferView(.declinePromotionalOffer)
                     } label: {
-                        Text(self.localization.commonLocalizedString(for: .noThanks))
+                        Text(self.localization[.noThanks])
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -143,8 +147,10 @@ struct PromotionalOfferHeaderView: View {
 
     @Environment(\.appearance)
     private var appearance: CustomerCenterConfigData.Appearance
+
     @Environment(\.colorScheme)
     private var colorScheme
+
     @ObservedObject
     private(set) var viewModel: PromotionalOfferViewModel
 

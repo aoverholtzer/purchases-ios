@@ -14,8 +14,6 @@
 
 import Foundation
 
-#if PAYWALL_COMPONENTS
-
 public extension PaywallComponent {
 
     struct ThemeImageUrls: Codable, Sendable, Hashable, Equatable {
@@ -152,7 +150,7 @@ public extension PaywallComponent {
             switch self {
             case .rectangle(let corners):
                 try container.encode(ShapeType.rectangle.rawValue, forKey: .type)
-                try container.encode(corners, forKey: .corners)
+                try container.encodeIfPresent(corners, forKey: .corners)
             case .pill:
                 try container.encode(ShapeType.pill.rawValue, forKey: .type)
             }
@@ -189,10 +187,58 @@ public extension PaywallComponent {
 
     }
 
+    enum IconBackgroundShape: Codable, Sendable, Hashable, Equatable {
+
+        case rectangle(CornerRadiuses?)
+        case circle
+
+        public func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+
+            switch self {
+            case .rectangle(let corners):
+                try container.encode(ShapeType.rectangle.rawValue, forKey: .type)
+                try container.encodeIfPresent(corners, forKey: .corners)
+            case .circle:
+                try container.encode(ShapeType.circle.rawValue, forKey: .type)
+            }
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            let type = try container.decode(ShapeType.self, forKey: .type)
+
+            switch type {
+            case .rectangle:
+                let value: CornerRadiuses? = try container.decodeIfPresent(CornerRadiuses.self, forKey: .corners)
+                self = .rectangle(value)
+            case .circle:
+                self = .circle
+            }
+        }
+
+        // swiftlint:disable:next nesting
+        private enum CodingKeys: String, CodingKey {
+
+            case type
+            case corners
+
+        }
+
+        // swiftlint:disable:next nesting
+        private enum ShapeType: String, Decodable {
+
+            case rectangle
+            case circle
+
+        }
+
+    }
+
     enum MaskShape: Codable, Sendable, Hashable, Equatable {
 
         case rectangle(CornerRadiuses?)
-        case pill
+        case circle
         case concave
         case convex
 
@@ -201,14 +247,14 @@ public extension PaywallComponent {
 
             switch self {
             case .rectangle(let corners):
-                try container.encode(MaskShapeType.rectangle.rawValue, forKey: .type)
+                try container.encodeIfPresent(MaskShapeType.rectangle.rawValue, forKey: .type)
                 try container.encode(corners, forKey: .corners)
-            case .pill:
-                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+            case .circle:
+                try container.encode(MaskShapeType.circle.rawValue, forKey: .type)
             case .concave:
-                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+                try container.encode(MaskShapeType.concave.rawValue, forKey: .type)
             case .convex:
-                try container.encode(MaskShapeType.pill.rawValue, forKey: .type)
+                try container.encode(MaskShapeType.convex.rawValue, forKey: .type)
             }
         }
 
@@ -220,8 +266,8 @@ public extension PaywallComponent {
             case .rectangle:
                 let value: CornerRadiuses? = try container.decodeIfPresent(CornerRadiuses.self, forKey: .corners)
                 self = .rectangle(value)
-            case .pill:
-                self = .pill
+            case .circle:
+                self = .circle
             case .concave:
                 self = .concave
             case .convex:
@@ -241,7 +287,7 @@ public extension PaywallComponent {
         private enum MaskShapeType: String, Decodable {
 
             case rectangle
-            case pill
+            case circle
             case concave
             case convex
 
@@ -392,7 +438,7 @@ public extension PaywallComponent {
 
     }
 
-    enum TwoDimensionAlignment: String, Decodable, Sendable, Hashable, Equatable {
+    enum TwoDimensionAlignment: String, Codable, Sendable, Hashable, Equatable {
 
         case center
         case leading
@@ -461,6 +507,38 @@ public extension PaywallComponent {
 
     }
 
-}
+    enum BadgeStyle: String, Codable, Sendable, Hashable, Equatable {
 
-#endif
+        case edgeToEdge = "edge_to_edge"
+        case overlaid = "overlay"
+        case nested = "nested"
+
+    }
+
+    final class Badge: Codable, Sendable, Hashable, Equatable {
+
+        public let style: BadgeStyle
+        public let alignment: TwoDimensionAlignment
+        public let stack: StackComponent
+
+        public init(style: BadgeStyle, alignment: TwoDimensionAlignment, stack: StackComponent) {
+            self.style = style
+            self.alignment = alignment
+            self.stack = stack
+        }
+
+        public static func == (lhs: Badge, rhs: Badge) -> Bool {
+            return lhs.style == rhs.style &&
+                   lhs.alignment == rhs.alignment &&
+                   lhs.stack == rhs.stack
+        }
+
+        public func hash(into hasher: inout Hasher) {
+            hasher.combine(style)
+            hasher.combine(alignment)
+            hasher.combine(stack)
+        }
+
+    }
+
+}

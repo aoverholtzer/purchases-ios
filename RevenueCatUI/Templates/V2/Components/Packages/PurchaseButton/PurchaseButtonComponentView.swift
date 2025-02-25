@@ -15,7 +15,7 @@ import Foundation
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 struct PurchaseButtonComponentView: View {
@@ -50,8 +50,13 @@ struct PurchaseButtonComponentView: View {
             _ = try await self.purchaseHandler.purchase(package: selectedPackage)
         } label: {
             // Not passing an onDismiss - nothing in this stack should be able to dismiss
-            StackComponentView(viewModel: viewModel.stackViewModel, onDismiss: {})
+            StackComponentView(
+                viewModel: viewModel.stackViewModel,
+                onDismiss: {},
+                showActivityIndicatorOverContent: self.purchaseHandler.actionInProgress
+            )
         }
+        .disabled(self.purchaseHandler.actionInProgress)
     }
 
 }
@@ -151,6 +156,8 @@ fileprivate extension PurchaseButtonComponentViewModel {
         let factory = ViewModelFactory()
         let stackViewModel = try factory.toStackViewModel(
             component: component.stack,
+            packageValidator: factory.packageValidator,
+            firstImageInfo: nil,
             localizationProvider: localizationProvider,
             uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
             offering: offering

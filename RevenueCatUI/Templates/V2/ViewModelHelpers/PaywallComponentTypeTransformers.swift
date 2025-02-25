@@ -10,11 +10,12 @@
 //  ComponentViewModels.swift
 //
 //  Created by Josh Holtz on 8/27/24.
+// swiftlint:disable file_length
 
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 extension PaywallComponent.FontSize {
 
@@ -232,33 +233,19 @@ extension PaywallComponent.FitMode {
     var contentMode: ContentMode {
         switch self {
         case .fit:
-            ContentMode.fit
+            return ContentMode.fit
         case .fill:
-            ContentMode.fill
+            return ContentMode.fill
         }
     }
 }
 
-extension PaywallComponent.ColorInfo {
+extension DisplayableColorInfo {
 
-    func toColor(fallback: Color, uiConfigProvider: UIConfigProvider) -> Color {
+    func toColor(fallback: Color) -> Color {
         switch self {
         case .hex(let hex):
             return hex.toColor(fallback: fallback)
-        case .alias(let alias):
-            guard let aliasColor = uiConfigProvider.getColor(for: alias) else {
-                Logger.warning("Aliased color '\(alias)' does not exist.")
-                return fallback
-            }
-
-            // Alias should never have an alias
-            // Using fallback so recursion doesn't happen
-            if case .alias = aliasColor {
-                Logger.warning("Aliased color '\(alias)' has an aliased value which is not allowed.")
-                return fallback
-            }
-
-            return aliasColor.toColor(fallback: fallback, uiConfigProvider: uiConfigProvider)
         case .linear, .radial:
             return fallback
         }
@@ -266,7 +253,7 @@ extension PaywallComponent.ColorInfo {
 
     func toGradient() -> Gradient {
         switch self {
-        case .hex, .alias:
+        case .hex:
             return Gradient(colors: [.clear])
         case .linear(_, let points), .radial(let points):
             let stops = points.map { point in
@@ -304,7 +291,7 @@ extension PaywallComponent.ColorHex {
 
         if scanner.scanHexInt64(&hexNumber) {
             // If Alpha channel is missing, it's a fully opaque color.
-            if hexNumber <= 0xffffff {
+            if hexColor.count == 6 {
                 hexNumber <<= 8
                 hexNumber |= 0xff
             }
@@ -323,13 +310,13 @@ extension PaywallComponent.ColorHex {
 
 }
 
-extension PaywallComponent.ColorScheme {
+extension DisplayableColorScheme {
 
     @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-    func toDynamicColor(uiConfigProvider: UIConfigProvider) -> Color {
-
+    func toDynamicColor() -> Color {
+        #if os(iOS) || os(tvOS) || os(visionOS) || targetEnvironment(macCatalyst)
         guard let darkModeColor = self.dark else {
-            return light.toColor(fallback: Color.clear, uiConfigProvider: uiConfigProvider)
+            return light.toColor(fallback: Color.clear)
         }
 
         let lightModeColor = light
@@ -337,16 +324,21 @@ extension PaywallComponent.ColorScheme {
         return Color(UIColor { traitCollection in
             switch traitCollection.userInterfaceStyle {
             case .light, .unspecified:
-                return UIColor(lightModeColor.toColor(fallback: Color.clear, uiConfigProvider: uiConfigProvider))
+                return UIColor(lightModeColor.toColor(fallback: Color.clear))
             case .dark:
-                return UIColor(darkModeColor.toColor(fallback: Color.clear, uiConfigProvider: uiConfigProvider))
+                return UIColor(darkModeColor.toColor(fallback: Color.clear))
             @unknown default:
-                return UIColor(lightModeColor.toColor(fallback: Color.clear, uiConfigProvider: uiConfigProvider))
+                return UIColor(lightModeColor.toColor(fallback: Color.clear))
             }
         })
+        #elseif os(watchOS) || os(macOS)
+        // For platforms where `UIColor` is unavailable, fallback to using the light or dark color directly
+        let currentColorScheme = (Environment(\.colorScheme).wrappedValue)
+        return effectiveColor(for: currentColorScheme).toColor(fallback: Color.clear)
+        #endif
     }
 
-    func effectiveColor(for colorScheme: ColorScheme) -> PaywallComponent.ColorInfo {
+    func effectiveColor(for colorScheme: ColorScheme) -> DisplayableColorInfo {
         switch colorScheme {
         case .light:
             return light
@@ -355,6 +347,74 @@ extension PaywallComponent.ColorScheme {
         @unknown default:
             return light
         }
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension PaywallComponent.Shape {
+
+    var shape: ShapeModifier.Shape {
+        switch self {
+        case .rectangle(let cornerRadiuses):
+            let corners = cornerRadiuses.flatMap { cornerRadiuses in
+                ShapeModifier.RadiusInfo(
+                    topLeft: cornerRadiuses.topLeading ?? 0,
+                    topRight: cornerRadiuses.topTrailing ?? 0,
+                    bottomLeft: cornerRadiuses.bottomLeading ?? 0,
+                    bottomRight: cornerRadiuses.bottomTrailing ?? 0
+                )
+            }
+            return .rectangle(corners)
+        case .pill:
+            return .pill
+        }
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension PaywallComponent.Border {
+
+    func border(uiConfigProvider: UIConfigProvider) -> ShapeModifier.BorderInfo? {
+        return ShapeModifier.BorderInfo(
+            color: self.color.asDisplayable(uiConfigProvider: uiConfigProvider).toDynamicColor(),
+            width: self.width
+        )
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension PaywallComponent.Shadow {
+
+    func shadow(uiConfigProvider: UIConfigProvider) -> ShadowModifier.ShadowInfo? {
+        return ShadowModifier.ShadowInfo(
+            color: self.color.asDisplayable(uiConfigProvider: uiConfigProvider).toDynamicColor(),
+            radius: self.radius,
+            x: self.x,
+            y: self.y
+        )
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension PaywallComponent.Badge {
+
+    func badge(stackShape: ShapeModifier.Shape?,
+               stackBorder: ShapeModifier.BorderInfo?,
+               badgeViewModels: [PaywallComponentViewModel],
+               uiConfigProvider: UIConfigProvider) -> BadgeModifier.BadgeInfo? {
+        BadgeModifier.BadgeInfo(
+            style: self.style,
+            alignment: self.alignment,
+            stack: self.stack,
+            badgeViewModels: badgeViewModels,
+            stackShape: stackShape,
+            stackBorder: stackBorder,
+            uiConfigProvider: uiConfigProvider
+        )
     }
 
 }

@@ -48,6 +48,7 @@ struct CustomerCenterConfigResponse {
         let openMethod: OpenMethod?
         let promotionalOffer: PromotionalOffer?
         let feedbackSurvey: FeedbackSurvey?
+        let refundWindowDuration: String?
 
         enum PathType: String {
 
@@ -133,7 +134,7 @@ struct CustomerCenterConfigResponse {
 
         let email: String
         let shouldWarnCustomerToUpdate: Bool?
-
+        let displayPurchaseHistoryLink: Bool?
     }
 
 }

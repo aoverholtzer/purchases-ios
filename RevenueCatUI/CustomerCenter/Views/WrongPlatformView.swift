@@ -37,20 +37,24 @@ struct WrongPlatformView: View {
 
     private let screen: CustomerCenterConfigData.Screen?
 
-    @Environment(\.localization)
-    private var localization: CustomerCenterConfigData.Localization
     @Environment(\.appearance)
     private var appearance: CustomerCenterConfigData.Appearance
+
     @Environment(\.colorScheme)
     private var colorScheme
+
+    @Environment(\.localization)
+    private var localization: CustomerCenterConfigData.Localization
+
     @Environment(\.supportInformation)
     private var supportInformation: CustomerCenterConfigData.Support?
+
     @Environment(\.openURL)
     private var openURL
 
     private var supportURL: URL? {
         guard let supportInformation = self.supportInformation else { return nil }
-        let subject = self.localization.commonLocalizedString(for: .defaultSubject)
+        let subject = self.localization[.defaultSubject]
         let body = supportInformation.calculateBody(self.localization)
         return URLUtilities.createMailURLIfPossible(email: supportInformation.email,
                                                     subject: subject,
@@ -84,7 +88,7 @@ struct WrongPlatformView: View {
                     AsyncButton {
                         openURL(managementURL)
                     } label: {
-                        Text(localization.commonLocalizedString(for: .manageSubscription))
+                        Text(localization[.manageSubscription])
                     }
                 }
             }
@@ -93,16 +97,12 @@ struct WrongPlatformView: View {
                     AsyncButton {
                         openURL(url)
                     } label: {
-                        Text(localization.commonLocalizedString(for: .contactSupport))
+                        Text(localization[.contactSupport])
                     }
                 }
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .compatibleTopBarTrailing) {
-                DismissCircleButton()
-            }
-        }
+        .dismissCircleButtonToolbar()
         .applyIf(self.screen?.title != nil, apply: {
             $0.navigationTitle(self.screen!.title).navigationBarTitleDisplayMode(.inline)
         })
@@ -140,7 +140,7 @@ struct WrongPlatformView_Previews: PreviewProvider {
         .init(store: .rcBilling,
               managementURL: URL(string: "https://api.revenuecat.com/rcbilling/v1/customerportal/1234/portal"),
               customerInfo: CustomerInfoFixtures.customerInfoWithRCBillingSubscriptions,
-              displayName: "RCBilling"),
+              displayName: "Web Billing"),
         .init(store: .stripe,
               managementURL: nil,
               customerInfo: CustomerInfoFixtures.customerInfoWithStripeSubscriptions,
@@ -178,8 +178,10 @@ struct WrongPlatformView_Previews: PreviewProvider {
     }
 
     private static func getPurchaseInformation(for customerInfo: CustomerInfo) -> PurchaseInformation {
-        return PurchaseInformation(entitlement: customerInfo.entitlements.active.first!.value,
-                                   transaction: customerInfo.subscriptionsByProductIdentifier.values.first!)
+        return PurchaseInformation(
+            entitlement: customerInfo.entitlements.active.first!.value,
+            transaction: customerInfo.subscriptionsByProductIdentifier.values.first!,
+            customerInfoRequestedDate: customerInfo.requestDate)
     }
 
 }

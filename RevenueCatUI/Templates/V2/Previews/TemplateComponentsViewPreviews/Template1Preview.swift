@@ -15,7 +15,7 @@ import Foundation
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 #if DEBUG
 
@@ -33,8 +33,9 @@ private enum Template1Preview {
                 heicLowRes: catUrl
             )
         ),
-        fitMode: .fit,
-        gradientColors: ["#ffffff00", "#ffffff00", "#ffffffff"]
+        size: .init(width: .fill, height: .fixed(270)),
+        fitMode: .fill,
+        maskShape: .convex
     )
 
     static let title = PaywallComponent.TextComponent(
@@ -45,7 +46,7 @@ private enum Template1Preview {
         backgroundColor: nil,
         padding: .zero,
         margin: .zero,
-        fontSize: .headingL,
+        fontSize: 28,
         horizontalAlignment: .center
     )
 
@@ -57,7 +58,7 @@ private enum Template1Preview {
         backgroundColor: nil,
         padding: .zero,
         margin: .zero,
-        fontSize: .bodyM,
+        fontSize: 15,
         horizontalAlignment: .center
     )
 
@@ -94,6 +95,17 @@ private enum Template1Preview {
         stack: packageStack
     )
 
+    static let bodyStack = PaywallComponent.StackComponent(
+        components: [
+            .text(body),
+            .package(package)
+        ],
+        dimension: .vertical(.center, .start),
+        size: .init(width: .fill, height: .fit),
+        spacing: 30,
+        backgroundColor: nil
+    )
+
     static let purchaseButton = PaywallComponent.PurchaseButtonComponent(
         stack: .init(
             components: [
@@ -116,10 +128,11 @@ private enum Template1Preview {
     static let contentStack = PaywallComponent.StackComponent(
         components: [
             .text(title),
-            .text(body),
-            .package(package),
+            .stack(bodyStack),
             .purchaseButton(purchaseButton)
         ],
+        dimension: .vertical(.center, .spaceEvenly),
+        size: .init(width: .fill, height: .fill),
         spacing: 30,
         backgroundColor: nil,
         margin: .init(top: 0,
@@ -133,8 +146,9 @@ private enum Template1Preview {
             .image(catImage),
             .stack(contentStack)
         ],
-        spacing: 20,
-        backgroundColor: nil
+        dimension: .vertical(.center, .start),
+        size: .init(width: .fill, height: .fill),
+        spacing: 0
     )
 
     static let paywallComponents: Offering.PaywallComponents = .init(
@@ -160,7 +174,8 @@ private enum Template1Preview {
                 stack: .init(
                     components: [
                         .stack(stack)
-                    ]
+                    ],
+                    overflow: .default
                 ),
                 stickyFooter: nil,
                 background: .color(.init(
@@ -200,9 +215,11 @@ struct Template1Preview_Previews: PreviewProvider {
             offering: .init(identifier: "default",
                             serverDescription: "",
                             availablePackages: [package]),
+            purchaseHandler: PurchaseHandler.default(),
             introEligibilityChecker: .default(),
             showZeroDecimalPlacePrices: true,
-            onDismiss: { }
+            onDismiss: { },
+            fallbackContent: .customView(AnyView(Text("Fallback paywall")))
         )
         .previewRequiredEnvironmentProperties()
         .previewLayout(.fixed(width: 400, height: 800))

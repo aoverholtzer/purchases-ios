@@ -15,7 +15,7 @@ import Foundation
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 // swiftlint:disable file_length
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
@@ -37,6 +37,7 @@ struct ShapeModifier: ViewModifier {
 
         case rectangle(RadiusInfo?)
         case pill
+        case circle
         case concave
         case convex
 
@@ -44,106 +45,168 @@ struct ShapeModifier: ViewModifier {
 
     struct RadiusInfo: Hashable {
 
-        let topLeft: CGFloat?
-        let topRight: CGFloat?
-        let bottomLeft: CGFloat?
-        let bottomRight: CGFloat?
-
-        init(topLeft: Double? = nil, topRight: Double? = nil, bottomLeft: Double? = nil, bottomRight: Double? = nil) {
-            self.topLeft = topLeft.flatMap { CGFloat($0) }
-            self.topRight = topRight.flatMap { CGFloat($0) }
-            self.bottomLeft = bottomLeft.flatMap { CGFloat($0) }
-            self.bottomRight = bottomRight.flatMap { CGFloat($0) }
-        }
+        let topLeft: Double?
+        let topRight: Double?
+        let bottomLeft: Double?
+        let bottomRight: Double?
 
     }
 
     var border: BorderInfo?
     var shape: Shape
-    var shadow: ShadowModifier.ShadowInfo?
     var background: BackgroundStyle?
     var uiConfigProvider: UIConfigProvider?
 
     init(border: BorderInfo?,
          shape: Shape?,
-         shadow: ShadowModifier.ShadowInfo?,
          background: BackgroundStyle?,
          uiConfigProvider: UIConfigProvider?
     ) {
         self.border = border
         self.shape = shape ?? .rectangle(nil)
-        self.shadow = shadow
         self.background = background
         self.uiConfigProvider = uiConfigProvider
     }
 
     func body(content: Content) -> some View {
         switch self.shape {
-        case .rectangle(let radiusInfo):
-            let shape = self.effectiveRectangleShape(radiusInfo: radiusInfo)
-            let effectiveShape = shape ?? Rectangle().eraseToAnyInsettableShape()
-            content
-                .backgroundStyle(background, uiConfigProvider: uiConfigProvider)
+        case .circle, .pill, .rectangle:
+            if let shape = self.shape.toInsettableShape() {
+                content
+                    .backgroundStyle(background)
                 // We want to clip only in case there is a non-Rectangle shape
                 // or if there's a border, otherwise we let the background color
                 // extend behind the safe areas
-                .applyIfLet(shape) { view, shape in
-                    view.clipShape(shape)
-                }
-                .applyIfLet(border) { view, border in
-                    view.clipShape(effectiveShape).overlay {
-                        effectiveShape.strokeBorder(border.color, lineWidth: border.width)
+                    .applyIf(!shape.isRectangle()) { view in
+                        view.clipShape(shape)
                     }
-                }
-                .applyIfLet(shadow) { view, shadow in
-                    view.shadow(shadow: shadow, shape: effectiveShape)
-                }
-        case .pill:
-            let shape = Capsule(style: .circular)
-            content
-                .backgroundStyle(background, uiConfigProvider: uiConfigProvider)
-                .clipShape(shape)
-                .applyIfLet(border) { view, border in
-                    view.overlay {
-                        shape.strokeBorder(border.color, lineWidth: border.width)
+                    .applyIfLet(border) { view, border in
+                        view.clipShape(shape).overlay {
+                            shape.strokeBorder(border.color, lineWidth: border.width)
+                        }
                     }
-                }.applyIfLet(shadow) { view, shadow in
-                    view.shadow(shadow: shadow, shape: shape)
-                }
+            }
         case .concave:
             // WIP: Need to implement
             content
+                .modifier(ConcaveMaskModifier(curveHeightPercentage: 0.2))
         case .convex:
-            // WIP: Need to implement
             content
+                .modifier(ConvexMaskModifier(curveHeightPercentage: 0.2))
         }
     }
 
-    func effectiveRectangleShape(radiusInfo: RadiusInfo?) -> AnyInsettableShape? {
-        if let topLeft = radiusInfo?.topLeft,
-           let topRight = radiusInfo?.topRight,
-           let bottomLeft = radiusInfo?.bottomLeft,
-           let bottomRight = radiusInfo?.bottomRight,
-           topLeft > 0 || topRight > 0 || bottomLeft > 0 || bottomRight > 0 {
-            if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: topLeft,
-                    bottomLeadingRadius: bottomLeft,
-                    bottomTrailingRadius: bottomRight,
-                    topTrailingRadius: topRight,
-                    style: .circular
-                ).eraseToAnyInsettableShape()
-            } else {
-                BackportedUnevenRoundedRectangle(
-                    topLeft: topLeft,
-                    topRight: topRight,
-                    bottomLeft: bottomLeft,
-                    bottomRight: bottomRight
-                ).eraseToAnyInsettableShape()
-            }
-        } else {
-            nil
-        }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)
+private struct ConcaveMaskModifier: ViewModifier {
+
+    let curveHeightPercentage: CGFloat
+
+    @State
+    private var size: CGSize = .zero
+
+    func body(content: Content) -> some View {
+        content
+            .onSizeChange { self.size = $0 }
+            .clipShape(
+                ConcaveShape(curveHeightPercentage: curveHeightPercentage, size: size)
+            )
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)
+private struct ConcaveShape: Shape {
+
+    let curveHeightPercentage: CGFloat
+    let size: CGSize
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        // Start at the top-left corner
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+
+        // Top-right corner
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+
+        // Bottom-right corner
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+
+        // Create the upward-facing concave curve
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY),
+            control: CGPoint(x: rect.midX, y: rect.maxY - self.curveHeight)
+        )
+
+        // Bottom-left corner
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+
+        path.closeSubpath()
+
+        return path
+    }
+
+    private var curveHeight: CGFloat {
+        // Calculate the curve height as a percentage of the view's height
+        max(0, size.height * curveHeightPercentage)
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)
+private struct ConvexMaskModifier: ViewModifier {
+
+    let curveHeightPercentage: CGFloat
+
+    @State
+    private var size: CGSize = .zero
+
+    func body(content: Content) -> some View {
+        content
+            .onSizeChange { self.size = $0 }
+            .clipShape(
+                ConvexShape(curveHeightPercentage: curveHeightPercentage, size: size)
+            )
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, *)
+private struct ConvexShape: Shape {
+
+    let curveHeightPercentage: CGFloat
+    let size: CGSize
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        // Start at the top-left corner
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+
+        // Top-right corner
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+
+        // Bottom-right corner
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - curveHeight))
+
+        // Create the concave curve
+        path.addQuadCurve(
+            to: CGPoint(x: rect.minX, y: rect.maxY - curveHeight),
+            control: CGPoint(x: rect.midX, y: rect.maxY + curveHeight)
+        )
+
+        // Bottom-left corner
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY - curveHeight))
+
+        path.closeSubpath()
+
+        return path
+    }
+
+    private var curveHeight: CGFloat {
+        // Calculate the curve height as a percentage of the view's height
+        max(0, size.height * curveHeightPercentage) / 2
     }
 
 }
@@ -164,6 +227,10 @@ struct AnyInsettableShape: InsettableShape {
         var copy = self
         copy.base = copy.base.inset(by: amount)
         return copy
+    }
+
+    func isRectangle() -> Bool {
+        base is Rectangle
     }
 }
 
@@ -243,7 +310,6 @@ extension View {
     func shape(
         border: ShapeModifier.BorderInfo?,
         shape: ShapeModifier.Shape?,
-        shadow: ShadowModifier.ShadowInfo? = nil,
         background: BackgroundStyle? = nil,
         uiConfigProvider: UIConfigProvider? = nil
     ) -> some View {
@@ -251,11 +317,66 @@ extension View {
             ShapeModifier(
                 border: border,
                 shape: shape,
-                shadow: shadow,
                 background: background,
                 uiConfigProvider: uiConfigProvider
             )
         )
+    }
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension ShapeModifier.Shape {
+    func toInsettableShape() -> (AnyInsettableShape)? {
+        switch self {
+        case .rectangle(let radiusInfo):
+            return self.effectiveRectangleShape(radiusInfo: radiusInfo)
+        case .circle:
+            return Circle().eraseToAnyInsettableShape()
+        case .pill:
+            #if compiler(>=5.9)
+            return Capsule(style: .circular).eraseToAnyInsettableShape()
+            #else
+            return Capsule().eraseToAnyInsettableShape()
+            #endif
+        case .concave, .convex:
+            return nil
+        }
+    }
+
+    private func effectiveRectangleShape(radiusInfo: ShapeModifier.RadiusInfo?) -> AnyInsettableShape {
+        let topLeft = radiusInfo?.topLeft ?? 0
+        let topRight = radiusInfo?.topRight ?? 0
+        let bottomLeft = radiusInfo?.bottomLeft ?? 0
+        let bottomRight = radiusInfo?.bottomRight ?? 0
+        if  topLeft > 0 || topRight > 0 || bottomLeft > 0 || bottomRight > 0 {
+            #if compiler(>=5.9)
+            if #available(iOS 16.0, macOS 13.0, tvOS 16.0, watchOS 9.0, *) {
+                return UnevenRoundedRectangle(
+                    topLeadingRadius: topLeft,
+                    bottomLeadingRadius: bottomLeft,
+                    bottomTrailingRadius: bottomRight,
+                    topTrailingRadius: topRight,
+                    style: .circular
+                ).eraseToAnyInsettableShape()
+            } else {
+                return BackportedUnevenRoundedRectangle(
+                    topLeft: topLeft,
+                    topRight: topRight,
+                    bottomLeft: bottomLeft,
+                    bottomRight: bottomRight
+                ).eraseToAnyInsettableShape()
+            }
+            #else
+            return BackportedUnevenRoundedRectangle(
+                topLeft: topLeft,
+                topRight: topRight,
+                bottomLeft: bottomLeft,
+                bottomRight: bottomRight
+            ).eraseToAnyInsettableShape()
+            #endif
+        } else {
+            return Rectangle().eraseToAnyInsettableShape()
+        }
     }
 }
 
@@ -271,6 +392,7 @@ struct CornerBorder_Previews: PreviewProvider {
         var name: [String] = []
         switch shape {
         case .pill: name.append("Pill")
+        case .circle: name.append("Circle")
         case .rectangle: name.append("Rectangle")
         case .none, .concave, .convex: break
         }
@@ -340,10 +462,10 @@ struct CornerBorder_Previews: PreviewProvider {
                             }
                             .shape(border: border,
                                    shape: shape,
-                                   shadow: shadow,
                                    background: background,
                                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make())
                             )
+                            .shadow(shadow: shadow, shape: shape?.toInsettableShape())
                             .padding(5)
                         }
                     }

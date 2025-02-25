@@ -17,7 +17,7 @@ import Foundation
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 struct TextComponentView: View {
@@ -49,21 +49,18 @@ struct TextComponentView: View {
                 package: self.packageContext.package
             )
         ) { style in
-            Group {
-                if style.visible {
-                    Text(.init(style.text))
-                        .font(style.font)
-                        .fontWeight(style.fontWeight)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .multilineTextAlignment(style.textAlignment)
-                        .foregroundColorScheme(style.color, uiConfigProvider: self.viewModel.uiConfigProvider)
-                        .padding(style.padding)
-                        .size(style.size, alignment: style.horizontalAlignment)
-                        .backgroundStyle(style.backgroundStyle, uiConfigProvider: self.viewModel.uiConfigProvider)
-                        .padding(style.margin)
-                } else {
-                    EmptyView()
-                }
+            if style.visible {
+                Text(.init(style.text))
+                    .font(style.font)
+                    .fontWeight(style.fontWeight)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(style.textAlignment)
+                    .foregroundColorScheme(style.color)
+                    .padding(style.padding)
+                    .size(style.size,
+                          horizontalAlignment: style.horizontalAlignment)
+                    .backgroundStyle(style.backgroundStyle)
+                    .padding(style.margin)
             }
         }
     }
@@ -113,7 +110,7 @@ struct TextComponentView_Previews: PreviewProvider {
                     component: .init(
                         text: "id_1",
                         color: .init(light: .hex("#000000")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -136,7 +133,7 @@ struct TextComponentView_Previews: PreviewProvider {
                         text: "id_1",
                         fontName: "primary",
                         color: .init(light: .hex("#000000")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -159,7 +156,7 @@ struct TextComponentView_Previews: PreviewProvider {
                         text: "id_1",
                         fontName: "This font name is not configured",
                         color: .init(light: .hex("#000000")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -182,7 +179,7 @@ struct TextComponentView_Previews: PreviewProvider {
                         text: "id_1",
                         fontName: "primary",
                         color: .init(light: .hex("#000000")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -190,6 +187,81 @@ struct TextComponentView_Previews: PreviewProvider {
         .previewRequiredEnvironmentProperties()
         .previewLayout(.sizeThatFits)
         .previewDisplayName("Custom Font")
+
+        // Custom Font - Generic
+        VStack {
+            TextComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [
+                            "id_1": .string("Hello, world")
+                        ]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make(
+                        fonts: [
+                            "generic": .init(ios: .name("serif"))
+                        ]
+                    )),
+                    component: .init(
+                        text: "id_1",
+                        fontName: "generic",
+                        color: .init(light: .hex("#000000")),
+                        fontSize: 40
+                    )
+                )
+            )
+
+            TextComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [
+                            "id_1": .string("Hello, world")
+                        ]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make(
+                        fonts: [
+                            "generic": .init(ios: .name("sans-serif"))
+                        ]
+                    )),
+                    component: .init(
+                        text: "id_1",
+                        fontName: "generic",
+                        color: .init(light: .hex("#000000")),
+                        fontSize: 40
+                    )
+                )
+            )
+
+            TextComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [
+                            "id_1": .string("Hello, world")
+                        ]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make(
+                        fonts: [
+                            "generic": .init(ios: .name("monospace"))
+                        ]
+                    )),
+                    component: .init(
+                        text: "id_1",
+                        fontName: "generic",
+                        color: .init(light: .hex("#000000")),
+                        fontSize: 40
+                    )
+                )
+            )
+        }
+        .previewRequiredEnvironmentProperties()
+        .previewLayout(.sizeThatFits)
+        .previewDisplayName("Custom Font - Generic")
 
         // Custom Color
         VStack {
@@ -204,15 +276,15 @@ struct TextComponentView_Previews: PreviewProvider {
                     ),
                     uiConfigProvider: .init(uiConfig: PreviewUIConfig.make(
                         colors: [
-                            "primary": .hex("#ff0000"),
-                            "secondary": .hex("#ffcc00")
+                            "primary": .init(light: .hex("#ff0000")),
+                            "secondary": .init(light: .hex("#ffcc00"))
                         ]
                     )),
                     component: .init(
                         text: "id_1",
                         color: .init(light: .alias("secondary")),
                         backgroundColor: .init(light: .alias("primary")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -228,15 +300,15 @@ struct TextComponentView_Previews: PreviewProvider {
                     ),
                     uiConfigProvider: .init(uiConfig: PreviewUIConfig.make(
                         colors: [
-                            "primary": .hex("#ff0000"),
-                            "secondary": .hex("#ffcc00")
+                            "primary": .init(light: .hex("#ff0000")),
+                            "secondary": .init(light: .hex("#ffcc00"))
                         ]
                     )),
                     component: .init(
                         text: "id_1",
                         color: .init(light: .alias("not a thing")),
                         backgroundColor: .init(light: .alias("also not a thing")),
-                        fontSize: .headingXXL
+                        fontSize: 40
                     )
                 )
             )
@@ -270,7 +342,7 @@ struct TextComponentView_Previews: PreviewProvider {
                             .init(color: "#00FDFF", percent: 100)
                         ])
                       ),
-                    fontSize: .headingXXL
+                    fontSize: 40
                 )
             )
         )
@@ -303,7 +375,7 @@ struct TextComponentView_Previews: PreviewProvider {
                                   bottom: 20,
                                   leading: 10,
                                   trailing: 10),
-                    fontSize: .bodyS,
+                    fontSize: 13,
                     horizontalAlignment: .leading
                 )
             )
@@ -326,24 +398,24 @@ struct TextComponentView_Previews: PreviewProvider {
                 component: .init(
                     text: "id_1",
                     color: .init(light: .hex("#000000")),
-                    overrides: .init(
-                        states: .init(
-                            selected: .init(
-                                fontWeight: .black,
-                                color: .init(light: .hex("#ff0000")),
-                                backgroundColor: .init(light: .hex("#0000ff")),
-                                padding: .init(top: 10,
-                                               bottom: 10,
-                                               leading: 10,
-                                               trailing: 10),
-                                margin: .init(top: 10,
-                                              bottom: 10,
-                                              leading: 10,
-                                              trailing: 10),
-                                fontSize: .headingXL
-                            )
-                        )
-                    )
+                    overrides: [
+                        .init(conditions: [
+                            .selected
+                        ], properties: .init(
+                            fontWeight: .black,
+                            color: .init(light: .hex("#ff0000")),
+                            backgroundColor: .init(light: .hex("#0000ff")),
+                            padding: .init(top: 10,
+                                           bottom: 10,
+                                           leading: 10,
+                                           trailing: 10),
+                            margin: .init(top: 10,
+                                          bottom: 10,
+                                          leading: 10,
+                                          trailing: 10),
+                            fontSize: 34
+                        ))
+                    ]
                 )
             )
         )
@@ -368,13 +440,13 @@ struct TextComponentView_Previews: PreviewProvider {
                 component: .init(
                     text: "id_1",
                     color: .init(light: .hex("#000000")),
-                    overrides: .init(
-                        conditions: .init(
-                            medium: .init(
-                                text: "id_2"
-                            )
-                        )
-                    )
+                    overrides: [
+                        .init(conditions: [
+                            .medium
+                        ], properties: .init(
+                            text: "id_2"
+                        ))
+                    ]
                 )
             )
         )
@@ -399,13 +471,13 @@ struct TextComponentView_Previews: PreviewProvider {
                 component: .init(
                     text: "id_1",
                     color: .init(light: .hex("#000000")),
-                    overrides: .init(
-                        conditions: .init(
-                            medium: .init(
-                                text: "id_2"
-                            )
-                        )
-                    )
+                    overrides: [
+                        .init(conditions: [
+                            .medium
+                        ], properties: .init(
+                            text: "id_2"
+                        ))
+                    ]
                 )
             )
         )
@@ -413,65 +485,63 @@ struct TextComponentView_Previews: PreviewProvider {
         .previewLayout(.sizeThatFits)
         .previewDisplayName("Condition - Has medium but not medium")
 
-        // Process variable (V2)
-        TextComponentView(
-            // swiftlint:disable:next force_try
-            viewModel: try! .init(
-                localizationProvider: .init(
-                    locale: Locale.current,
-                    localizedStrings: [
-                        "id_1": .string(
-                            "{{ product.store_product_name }} is " +
-                            "{{ product.price_per_period }} " +
-                            "({{ product.relative_discount }})"
-                        )
-                    ]
-                ),
-                uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
-                component: .init(
-                    text: "id_1",
-                    color: .init(light: .hex("#000000"))
+        VStack {
+            // Process variable (V2)
+            TextComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [
+                            "id_1": .string(
+                                "{{ product.store_product_name }} is " +
+                                "{{ product.price_per_period }} " +
+                                "({{ product.relative_discount }})"
+                            )
+                        ]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+                    component: .init(
+                        text: "id_1",
+                        color: .init(light: .hex("#000000"))
+                    )
                 )
             )
-        )
-        .previewRequiredEnvironmentProperties(
-            packageContext: .init(
-                package: PreviewMock.annualPackage,
-                variableContext: .init(packages: [PreviewMock.monthlyPackage, PreviewMock.annualPackage])
-            )
-        )
-        .previewLayout(.sizeThatFits)
-        .previewDisplayName("Process variable (V2)")
 
-        // Process variable (V1)
-        TextComponentView(
-            // swiftlint:disable:next force_try
-            viewModel: try! .init(
-                localizationProvider: .init(
-                    locale: Locale.current,
-                    localizedStrings: [
-                        "id_1": .string(
-                            "{{ product_name }} is " +
-                            "{{ price_per_period_full }} " +
-                            "({{ sub_relative_discount }})"
-                        )
-                    ]
-                ),
-                uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
-                component: .init(
-                    text: "id_1",
-                    color: .init(light: .hex("#000000"))
+            // Process variable (V1)
+            TextComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [
+                            "id_1": .string(
+                                "{{ product_name }} is " +
+                                "{{ price_per_period_full }} " +
+                                "({{ sub_relative_discount }})"
+                            )
+                        ]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+                    component: .init(
+                        text: "id_1",
+                        color: .init(light: .hex("#000000"))
+                    )
                 )
             )
-        )
+        }
         .previewRequiredEnvironmentProperties(
             packageContext: .init(
-                package: PreviewMock.annualPackage,
-                variableContext: .init(packages: [PreviewMock.monthlyPackage, PreviewMock.annualPackage])
+                package: PreviewMock.annualStandardPackage,
+                variableContext: .init(packages: [
+                    PreviewMock.monthlyStandardPackage,
+                    PreviewMock.annualStandardPackage
+                ])
             )
         )
         .previewLayout(.sizeThatFits)
-        .previewDisplayName("Process variable (V1)")
+        .previewDisplayName("Process variable")
+
     }
 }
 

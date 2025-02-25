@@ -15,7 +15,7 @@ import Foundation
 import RevenueCat
 import SwiftUI
 
-#if PAYWALL_COMPONENTS
+#if !os(macOS) && !os(tvOS) // For Paywalls V2
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 struct ImageComponentView: View {
@@ -45,16 +45,25 @@ struct ImageComponentView: View {
                 package: self.packageContext.package
             )
         ) { style in
-            RemoteImage(
-                url: style.url,
-                lowResUrl: style.lowResUrl,
-                darkUrl: style.darkUrl,
-                darkLowResUrl: style.darkLowResUrl
-            ) { (image, size) in
-                self.renderImage(image, size, with: style)
+            if style.visible {
+                RemoteImage(
+                    url: style.url,
+                    lowResUrl: style.lowResUrl,
+                    darkUrl: style.darkUrl,
+                    darkLowResUrl: style.darkLowResUrl
+                ) { (image, size) in
+                    self.renderImage(image, size, with: style)
+                }
+                .size(style.size)
+                .clipped()
+                .shape(border: style.border,
+                       shape: style.shape)
+                .shadow(shadow: style.shadow,
+                        shape: style.shape?.toInsettableShape())
+                .padding(style.padding)
+                // WIP: Add border still
+                .padding(style.margin)
             }
-            .size(style.size)
-            .clipped()
         }
     }
 
@@ -84,18 +93,11 @@ struct ImageComponentView: View {
             .frame(maxWidth: .infinity)
             // WIP: Fix this later when accessibility info is available
             .accessibilityHidden(true)
-            // WIP: Need to replace this gradient with the better one
-            .overlay(
-                LinearGradient(
-                    gradient: Gradient(colors: style.gradientColors),
-                    startPoint: .top,
-                    endPoint: .bottom
+            .applyIfLet(style.colorOverlay, apply: { view, colorOverlay in
+                view.overlay(
+                    Color.clear.backgroundStyle(.color(colorOverlay))
                 )
-            )
-            // WIP: this needs more shapes and borders
-            // WIP: this might also need dropshadow
-            .shape(border: nil,
-                   shape: style.shape)
+            })
     }
 
 }
@@ -103,6 +105,7 @@ struct ImageComponentView: View {
 #if DEBUG
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+// swiftlint:disable:next type_body_length
 struct ImageComponentView_Previews: PreviewProvider {
     static let catUrl = URL(string: "https://assets.pawwalls.com/954459_1701163461.jpg")!
 
@@ -128,7 +131,15 @@ struct ImageComponentView_Previews: PreviewProvider {
                                 heicLowRes: catUrl
                             )
                         ),
-                        fitMode: .fit
+                        fitMode: .fit,
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
                     )
                 )
             )
@@ -157,7 +168,15 @@ struct ImageComponentView_Previews: PreviewProvider {
                                 heicLowRes: catUrl
                             )
                         ),
-                        fitMode: .fill
+                        fitMode: .fill,
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
                     )
                 )
             )
@@ -187,9 +206,18 @@ struct ImageComponentView_Previews: PreviewProvider {
                             )
                         ),
                         fitMode: .fill,
-                        gradientColors: [
-                            "#ffffff00", "#ffffff00", "#ffffffff"
-                        ]
+                        colorOverlay: .init(light: .linear(0, [
+                            .init(color: "#ffffff", percent: 0),
+                            .init(color: "#ffffff00", percent: 40)
+                        ])),
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
                     )
                 )
             )
@@ -222,7 +250,15 @@ struct ImageComponentView_Previews: PreviewProvider {
                         maskShape: .rectangle(.init(topLeading: 40,
                                                     topTrailing: 40,
                                                     bottomLeading: 40,
-                                                    bottomTrailing: 40))
+                                                    bottomTrailing: 40)),
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
                     )
                 )
             )
@@ -230,6 +266,120 @@ struct ImageComponentView_Previews: PreviewProvider {
         .previewRequiredEnvironmentProperties()
         .previewLayout(.fixed(width: 400, height: 400))
         .previewDisplayName("Light - Rounded Corner")
+
+        // Light - Fit with Circle
+        VStack {
+            ImageComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [:]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+                    component: .init(
+                        source: .init(
+                            light: .init(
+                                width: 750,
+                                height: 530,
+                                original: catUrl,
+                                heic: catUrl,
+                                heicLowRes: catUrl
+                            )
+                        ),
+                        fitMode: .fit,
+                        maskShape: .circle,
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
+                    )
+                )
+            )
+        }
+        .previewRequiredEnvironmentProperties()
+        .previewLayout(.fixed(width: 400, height: 400))
+        .previewDisplayName("Light - Circle")
+
+        // Light - Fit with Convex
+        VStack {
+            ImageComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [:]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+                    component: .init(
+                        source: .init(
+                            light: .init(
+                                width: 750,
+                                height: 530,
+                                original: catUrl,
+                                heic: catUrl,
+                                heicLowRes: catUrl
+                            )
+                        ),
+                        fitMode: .fit,
+                        maskShape: .convex,
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
+                    )
+                )
+            )
+        }
+        .previewRequiredEnvironmentProperties()
+        .previewLayout(.fixed(width: 400, height: 400))
+        .previewDisplayName("Light - Fit with Convex")
+
+        // Light - Fit with Concave
+        VStack {
+            ImageComponentView(
+                // swiftlint:disable:next force_try
+                viewModel: try! .init(
+                    localizationProvider: .init(
+                        locale: Locale.current,
+                        localizedStrings: [:]
+                    ),
+                    uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
+                    component: .init(
+                        source: .init(
+                            light: .init(
+                                width: 750,
+                                height: 530,
+                                original: catUrl,
+                                heic: catUrl,
+                                heicLowRes: catUrl
+                            )
+                        ),
+                        fitMode: .fit,
+                        maskShape: .concave,
+                        border: .init(color: .init(light: .hex("#f8f81b")), width: 4),
+                        shadow: .init(
+                            color: .init(
+                                light: .hex("#000000"),
+                                dark: .hex("#000000")
+                            ),
+                            radius: 5, x: 5, y: 5
+                        )
+                    )
+                )
+            )
+        }
+        .previewRequiredEnvironmentProperties()
+        .previewLayout(.fixed(width: 400, height: 400))
+        .previewDisplayName("Light - Fit with Concave")
     }
 }
 
