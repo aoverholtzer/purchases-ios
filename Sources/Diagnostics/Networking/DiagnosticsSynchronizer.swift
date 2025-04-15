@@ -73,11 +73,7 @@ actor DiagnosticsSynchronizer: DiagnosticsSynchronizerType {
             Logger.error(Strings.diagnostics.could_not_synchronize_diagnostics(error: error))
 
             if let backendError = error as? BackendError,
-               backendError.successfullySynced {
-                await self.handler.cleanSentDiagnostics(diagnosticsSentCount: count)
-                self.tracker?.trackClearingDiagnosticsAfterFailedSync()
-                self.clearSyncRetries()
-            } else {
+               backendError.shouldRetryDiagnosticsSync {
                 let currentSyncRetries = self.getCurrentSyncRetries()
 
                 if currentSyncRetries >= Self.maxSyncRetries {
@@ -88,9 +84,27 @@ actor DiagnosticsSynchronizer: DiagnosticsSynchronizerType {
                 } else {
                     self.increaseSyncRetries(currentRetries: currentSyncRetries)
                 }
+            } else {
+                await self.handler.cleanSentDiagnostics(diagnosticsSentCount: count)
+                self.tracker?.trackClearingDiagnosticsAfterFailedSync()
+                self.clearSyncRetries()
             }
 
             throw error
+        }
+    }
+
+}
+
+@available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
+extension DiagnosticsSynchronizer: DiagnosticsFileHandlerDelegate {
+
+    func onFileSizeIncreasedBeyondAutomaticSyncLimit() async {
+        Logger.verbose(Strings.diagnostics.syncing_events_due_to_enough_file_size_reached)
+        do {
+            try await self.syncDiagnosticsIfNeeded()
+        } catch {
+            Logger.error(Strings.diagnostics.could_not_synchronize_diagnostics(error: error))
         }
     }
 
@@ -120,6 +134,25 @@ private extension DiagnosticsSynchronizer {
     func getCurrentSyncRetries() -> Int {
         return self.userDefaults.read {
             $0.integer(forKey: CacheKeys.numberOfRetries.rawValue)
+        }
+    }
+
+}
+
+private extension BackendError {
+
+    var shouldRetryDiagnosticsSync: Bool {
+        guard case .networkError(let networkError) = self else {
+            return false
+        }
+
+        switch networkError {
+        case .networkError:
+            return true
+        case .errorResponse(_, let statusCode, _):
+            return statusCode.isServerError
+        default:
+            return false
         }
     }
 
