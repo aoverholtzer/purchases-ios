@@ -46,19 +46,21 @@ struct ScrollViewSection<Content: View>: View {
 @available(watchOS, unavailable)
 struct PurchasesInformationSection: View {
 
+    let title: String
     let items: [PurchaseInformation]
     let localization: CustomerCenterConfigData.Localization
     let action: (PurchaseInformation) -> Void
 
     var body: some View {
-        ScrollViewSection(title: localization[.purchasesSectionTitle]) {
-            ForEach(items) { purchase in
+        ScrollViewSection(title: title) {
+            ForEach(Array(items.enumerated()), id: \.element) { (offset, purchase) in
                 Button {
                     action(purchase)
                 } label: {
                     PurchaseInformationCardView(
                         purchaseInformation: purchase,
-                        localization: localization
+                        localization: localization,
+                        accessibilityIdentifier: "purchase_card_\(offset)"
                     )
                     .cornerRadius(10)
                     .padding(.horizontal)
