@@ -1,3 +1,102 @@
+## 5.32.0
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Fixes API tests after changes to public API (#5365) via Pol Piella Abadia (@polpielladev)
+### Virtual Currencies
+#### ✨ New Features
+* Virtual Currency Support (#5108) via Will Taylor (@fire-at-will)
+
+### 🔄 Other Changes
+* [DX-457] Re-apply Health SDK logging on app launch (#5360) via Pol Piella Abadia (@polpielladev)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5361) via RevenueCat Git Bot (@RCGitBot)
+* Add basics for a working tuist workspace (#5248) via Facundo Menzella (@facumenzella)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5357) via RevenueCat Git Bot (@RCGitBot)
+* Fix one flaky unit test (#5356) via Antonio Pallares (@ajpallares)
+
+## 5.31.0
+## RevenueCat SDK
+### Customer Center
+#### ✨ New Features
+* Add smoother loading animation to SubscriptionDetailView (#5329) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Fix google products display for customer center (#5349) via Facundo Menzella (@facumenzella)
+
+## RevenueCatUI SDK
+### Customer Center
+#### ✨ New Features
+* Preferred UI locale for UI components (#5292) via Antonio Pallares (@ajpallares)
+* Remove trailing text for PurchaseCardView, and simplify billing information.  (#5300) via Facundo Menzella (@facumenzella)
+* Add account details to single purchase view (#5327) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Fix broken Customer Center strings (#5311) via Cesar de la Vega (@vegaro)
+
+### 🔄 Other Changes
+* Temporary revert of automatic health reporting in the SDK (#5353) via Pol Piella Abadia (@polpielladev)
+* fix `Purchases` temporary leak when running SDK health check (#5350) via Antonio Pallares (@ajpallares)
+* Consider Offerings cache stale when preferred locales change (#5312) via Antonio Pallares (@ajpallares)
+* [DX-457] Log the SDK configuration report on every `#DEBUG` run (#5317) via Pol Piella Abadia (@polpielladev)
+* Update workflows/issue-notifications.yml@v2 (#5346) via Josh Holtz (@joshdholtz)
+* Fix some failing tests (#5344) via Antonio Pallares (@ajpallares)
+* Preferred locale override (#5288) via Antonio Pallares (@ajpallares)
+* [CI] use M4 Pro Medium (#5321) via Mark Villacampa (@MarkVillacampa)
+* Add shared ack workflow (#5340) via Josh Holtz (@joshdholtz)
+* Use NewErrorUtils instead of RevenueCat.ErrorUtils (#5293) via Facundo Menzella (@facumenzella)
+* Bump ack action to v15 (#5339) via Josh Holtz (@joshdholtz)
+* Bump ack action to v11 (#5336) via Josh Holtz (@joshdholtz)
+* New issue template form and issue monitoring job (#5333) via Josh Holtz (@joshdholtz)
+* Add Intro Eligibility Functions to CEC Mode (#5322) via Will Taylor (@fire-at-will)
+
+## 5.29.0
+## RevenueCat SDK
+### Customer Center
+#### ✨ New Features
+* Use `card_store_promotional` for RC Promos in card & history (#5275) via Facundo Menzella (@facumenzella)
+* Refactor PurchaseHistory to use PurchaseInformation (#5260) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Add tests for PurchaseInformationView.Badge + rc promo (#5273) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* [Paywalls] Update ImageComponent max width after initial layout if it changes. (#5291) via Mark Villacampa (@MarkVillacampa)
+* Fix index and mgiration guides docs not being updated (#5298) via Mark Villacampa (@MarkVillacampa)
+* Add .yield to `PaywallViewEventsFullscreenLightModeTests` (#5294) via Facundo Menzella (@facumenzella)
+* Add missing `@_spi` to import in backend tests (#5297) via Antonio Pallares (@ajpallares)
+* Use minimal permissions for installation tests (#5274) via JayShortway (@JayShortway)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5295) via RevenueCat Git Bot (@RCGitBot)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5289) via RevenueCat Git Bot (@RCGitBot)
+* Delete Examples folder from carthage checkout (#5287) via Facundo Menzella (@facumenzella)
+* Remove CustomerCenterConfigDataAPI from API Tests (#5286) via Facundo Menzella (@facumenzella)
+* Delete duplicate OfferingsList.swift from PaywallTester (#5249) via Facundo Menzella (@facumenzella)
+* Add abbrev to Gemfile (#5207) via Facundo Menzella (@facumenzella)
+* Test removing example apps before Carthage installation test (#5268) via Facundo Menzella (@facumenzella)
+* Add _spi(Internal) to Customer Center (#5270) via Facundo Menzella (@facumenzella)
+
+## 5.28.1
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Enable markdown in paywalls in iOS 15 and watchOS 8 (#5267) via Antonio Pallares (@ajpallares)
+### Customer Center
+#### 🐞 Bugfixes
+* Trigger promotional offer callback from `PromotionalOfferViewModel` (#5263) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* FIx image load in paywall rendering validation (#5264) via Antonio Pallares (@ajpallares)
+* Include commit hash in commit message for paywall-rendering-validation (#5265) via Antonio Pallares (@ajpallares)
+* Bring back paywall rendering validation (no submodules) (#5252) via Antonio Pallares (@ajpallares)
+* Rename duplicate CachingProductsManagerTests to CachingProductsManagerIntegrationTests (#5244) via Facundo Menzella (@facumenzella)
+* Update CustomerInfo sample with is_sandbox to make sure it works (#5203) via Facundo Menzella (@facumenzella)
+* Add originalPurchaseDate & isSandbox to PurchaseInformation (#5259) via Facundo Menzella (@facumenzella)
+
+## 5.28.0
+## RevenueCat SDK
+### Customer Center
+#### ✨ New Features
+* Show most recent expired if no active subscriptions (#5198) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* Use Mint 0.17.5 for `run-test-ios-14` CI job (#5256) via Antonio Pallares (@ajpallares)
+* Fix Xcode 16 compilation error (#5254) via Antonio Pallares (@ajpallares)
+* Add Danger rule to avoid submodules (#5250) via Antonio Pallares (@ajpallares)
+
 ## 5.27.1
 ## RevenueCat SDK
 ### 🐞 Bugfixes

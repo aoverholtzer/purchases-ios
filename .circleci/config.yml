@@ -1,7 +1,7 @@
 orbs:
   macos: circleci/macos@2.5.1
   slack: circleci/slack@5.0.0
-  revenuecat: revenuecat/sdks-common-config@3.0.0
+  revenuecat: revenuecat/sdks-common-config@3.1.0
   # Disabled until compatible with M1: codecov: codecov/codecov@3.3.0
   # codecov: codecov/codecov@3.3.0
 
@@ -17,6 +17,7 @@ parameters:
         run-manual-tests,
         run-manual-docs-deploy,
         update_paywall_templates,
+        record_paywall_screenshots,
       ]
     default: default
   generate_snapshots:
@@ -47,21 +48,37 @@ executors:
         type: string
         default: "16.0"
     macos:
+      # circleci-lint: disable=unknown-xcode-version
+      xcode: << parameters.xcode_version >>
+    resource_class: m4pro.medium
+    environment:
+      CIRCLECI_TESTS_GENERATE_SNAPSHOTS: << pipeline.parameters.generate_snapshots >>
+      CIRCLECI_TESTS_GENERATE_REVENUECAT_UI_SNAPSHOTS: << pipeline.parameters.generate_revenuecatui_snapshots >>
+    working_directory: ~/purchases-ios
+    shell: /bin/bash --login -o pipefail
+  macos-executor-for-macos-12_6:
+    parameters:
+      xcode_version:
+        type: string
+        default: "16.0"
+    macos:
+      # circleci-lint: disable=unknown-xcode-version
       xcode: << parameters.xcode_version >>
     resource_class: macos.m1.medium.gen1
     environment:
       CIRCLECI_TESTS_GENERATE_SNAPSHOTS: << pipeline.parameters.generate_snapshots >>
       CIRCLECI_TESTS_GENERATE_REVENUECAT_UI_SNAPSHOTS: << pipeline.parameters.generate_revenuecatui_snapshots >>
     working_directory: ~/purchases-ios
-    shell: /bin/bash --login -o pipefail
+    shell: /bin/bash --login -o pipefail  
   macos-executor-large:
     parameters:
       xcode_version:
         type: string
         default: "16.0"
     macos:
+      # circleci-lint: disable=unknown-xcode-version
       xcode: << parameters.xcode_version >>
-    resource_class: macos.m1.large.gen1
+    resource_class: m4pro.medium
     environment:
       CIRCLECI_TESTS_GENERATE_SNAPSHOTS: << pipeline.parameters.generate_snapshots >>
       CIRCLECI_TESTS_GENERATE_REVENUECAT_UI_SNAPSHOTS: << pipeline.parameters.generate_revenuecatui_snapshots >>
@@ -100,18 +117,6 @@ aliases:
         only: main
 
 commands:
-  checkout-submodule:
-    description: "Checks out a git submodule."
-    parameters:
-      path:
-        type: string
-        default: ""
-    steps:
-      - run:
-          name: Check out submodule << parameters.path >>
-          command: |
-            git submodule init << parameters.path >>
-            git submodule update << parameters.path >>
   slack-notify-on-fail:
     steps:
       - slack/notify:
@@ -446,13 +451,34 @@ commands:
           path: fastlane/test_output/xctest
           destination: scan-test-output
 
+  checkout-with-minimal-permissions:
+    steps:
+      - revenuecat/remove-all-ssh-keys
+      - revenuecat/checkout-with-key:
+          fingerprint: "SHA256:TY+ziSK99HtCkgT7rILg/o2G05KSV8BxmQht0ApvYng"
+      - revenuecat/assert-git-clone-fails:
+          repository: paywall-preview-resources
+      - revenuecat/assert-git-clone-fails:
+          repository: paywall-rendering-validation
+      - revenuecat/assert-git-clone-fails:
+          repository: khepri
+      - set-signing-repo-deploy-key-for-git
+
+  # Will configure git to use the deploy key for the private certificates repo from now on.
+  set-signing-repo-deploy-key-for-git:
+    steps:
+      - revenuecat/set-ssh-key-for-git:
+          fingerprint: "SHA256:UYi3gsOInLRPZy6MPho7Yr/YK1VmjDvPGo7sJvIcnPM"
+
 jobs:
   validate-package-swift:
     parameters:
       xcode_version:
         type: string
+      mac_os_executor_name:
+        type: string
     executor:
-      name: macos-executor
+      name: << parameters.mac_os_executor_name >>
       xcode_version: << parameters.xcode_version >>
     steps:
       - checkout
@@ -463,7 +489,7 @@ jobs:
   spm-release-build-xcode-14:
     executor:
       name: macos-executor
-      xcode_version: "14.3.0"
+      xcode_version: "14.3.1"
 
     steps:
       - checkout
@@ -501,7 +527,7 @@ jobs:
 
   spm-xcode-14-1:
     executor:
-      name: macos-executor
+      name: macos-executor-for-macos-12_6
       xcode_version: "14.1.0"
 
     steps:
@@ -566,7 +592,7 @@ jobs:
   spm-revenuecat-ui-ios-15:
     executor:
       name: macos-executor
-      xcode_version: "14.3.0"
+      xcode_version: "14.3.1"
 
     steps:
       - checkout
@@ -914,7 +940,7 @@ jobs:
 
   run-test-ios-14:
     executor:
-      name: macos-executor
+      name: macos-executor-for-macos-12_6
       # Pre-iOS 15 requires macOS 12 which requires Xcode 14.2
       # See https://circleci.com/docs/using-macos/#supported-xcode-versions
       xcode_version: "14.2.0"
@@ -952,7 +978,7 @@ jobs:
 
   run-test-ios-13:
     executor:
-      name: macos-executor
+      name: macos-executor-for-macos-12_6
       xcode_version: "14.2.0"
 
     steps:
@@ -1091,7 +1117,7 @@ jobs:
       name: macos-executor
       # needs to be xcode 14 since we couldn't get xcode 15 to get along with --additional-symbol-graph-dir
       # https://github.com/RevenueCat/purchases-ios/pull/1997
-      xcode_version: "14.3.0"
+      xcode_version: "14.3.1"
     steps:
       - setup-git-credentials
       - checkout
@@ -1108,7 +1134,7 @@ jobs:
       name: macos-executor
       # needs to be xcode 14 since we couldn't get xcode 15 to get along with --additional-symbol-graph-dir
       # https://github.com/RevenueCat/purchases-ios/pull/1997
-      xcode_version: "14.3.0"
+      xcode_version: "14.3.1"
     steps:
       - setup-git-credentials
       - checkout
@@ -1177,7 +1203,7 @@ jobs:
     executor:
       name: macos-executor
     steps:
-      - checkout
+      - checkout-with-minimal-permissions
       - install-dependencies
       - install-dependencies:
           directory: Tests/InstallationTests/CocoapodsInstallation
@@ -1186,6 +1212,7 @@ jobs:
           working_directory: Tests/InstallationTests/CocoapodsInstallation/
           command: |
             bundle exec pod install
+      - set-signing-repo-deploy-key-for-git
       - scan-and-archive:
           directory: Tests/InstallationTests/CocoapodsInstallation
       - slack-notify-on-fail
@@ -1194,12 +1221,12 @@ jobs:
     executor:
       name: macos-executor
     steps:
-      - checkout
-      - trust-github-key
+      - checkout-with-minimal-permissions
       - install-dependencies
       - update-spm-installation-commit
       - install-dependencies:
           directory: Tests/InstallationTests/SPMInstallation/
+      - set-signing-repo-deploy-key-for-git
       - scan-and-archive-all-platforms:
           directory: Tests/InstallationTests/SPMInstallation/
       - slack-notify-on-fail
@@ -1208,8 +1235,7 @@ jobs:
     executor:
       name: macos-executor
     steps:
-      - checkout
-      - trust-github-key
+      - checkout-with-minimal-permissions
       - install-dependencies
       - update-spm-installation-commit
       - install-dependencies:
@@ -1222,12 +1248,12 @@ jobs:
     executor:
       name: macos-executor
     steps:
-      - checkout
-      - trust-github-key
+      - checkout-with-minimal-permissions
       - install-dependencies
       - update-spm-installation-commit
       - install-dependencies:
           directory: Tests/InstallationTests/ReceiptParserInstallation/
+      - set-signing-repo-deploy-key-for-git
       - scan-and-archive-all-platforms:
           directory: Tests/InstallationTests/ReceiptParserInstallation/
       - slack-notify-on-fail
@@ -1236,8 +1262,7 @@ jobs:
     executor:
       name: macos-executor-large
     steps:
-      - checkout
-      - trust-github-key
+      - checkout-with-minimal-permissions
       - run:
           name: Upgrade Carthage
           command: |
@@ -1250,7 +1275,7 @@ jobs:
           working_directory: Tests/InstallationTests/CarthageInstallation/
           command: |
             bundle exec fastlane installation_tests
-
+      - set-signing-repo-deploy-key-for-git
       - install-dependencies-scan-and-archive:
           directory: Tests/InstallationTests/CarthageInstallation/
       - slack-notify-on-fail
@@ -1261,8 +1286,8 @@ jobs:
     working_directory: ~/purchases-ios/
     shell: /bin/bash --login -o pipefail
     steps:
-      - checkout
-
+      - checkout-with-minimal-permissions
+      - set-signing-repo-deploy-key-for-git
       - install-dependencies-scan-and-archive:
           directory: Tests/InstallationTests/XcodeDirectInstallation/
       - slack-notify-on-fail
@@ -1289,7 +1314,7 @@ jobs:
 
   danger:
     docker:
-      - image: cimg/ruby:3.1.2
+      - image: cimg/ruby:3.2.0
     working_directory: ~/purchases-ios
     shell: /bin/bash --login -o pipefail
     steps:
@@ -1301,7 +1326,7 @@ jobs:
 
   tag-release-branch:
     docker:
-      - image: cimg/ruby:3.1.2
+      - image: cimg/ruby:3.2.0
     working_directory: ~/purchases-ios
     shell: /bin/bash --login -o pipefail
     steps:
@@ -1403,46 +1428,39 @@ jobs:
       xcode_version: "16.0"
 
     steps:
+      - checkout
+      - install-dependencies:
+          install_swiftlint: false
       - run:
-          name: Temporarily failing job until we fix issues with SPM and submodules.
-          command: exit 1
-      # - checkout
-      # - checkout-submodule:
-      #     path: upstream/paywall-preview-resources
-      # - install-dependencies:
-      #     install_swiftlint: false
-      # - run:
-      #     name: Clone paywall-rendering-validation repository
-      #     command: git clone git@github.com:RevenueCat/paywall-rendering-validation.git ../paywall-rendering-validation
-      # - revenuecat/setup-git-credentials
-      # - run:
-      #     name: Set GitHub token environment variable
-      #     command: |
-      #       echo "export GITHUB_TOKEN=$GH_TOKEN_PAYWALL_RENDERING_VALIDATION_PR_RW" >> $BASH_ENV
-      #       source $BASH_ENV
-      # - run:
-      #     name: Run tests
-      #     command: bundle exec fastlane record_and_push_paywall_template_screenshots target_repository_path:../paywall-rendering-validation
-      #     no_output_timeout: 15m
-      #     environment:
-      #       SCAN_DEVICE: iPhone 16
+          name: Fetch paywall-preview-resources
+          command: bundle exec fastlane ios fetch_paywall_preview_resources
+      - run:
+          name: Clone paywall-rendering-validation repository
+          command: git clone git@github.com:RevenueCat/paywall-rendering-validation.git ../Tests/paywall-rendering-validation
+      - revenuecat/setup-git-credentials
+      - run:
+          name: Set GitHub token environment variable
+          command: |
+            echo "export GITHUB_TOKEN=$GH_TOKEN_PAYWALL_RENDERING_VALIDATION_PR_RW" >> $BASH_ENV
+            source $BASH_ENV
+      - run:
+          name: Run tests
+          command: bundle exec fastlane record_and_push_paywall_template_screenshots target_repository_path:../Tests/paywall-rendering-validation
+          no_output_timeout: 15m
+          environment:
+            SCAN_DEVICE: iPhone 16
 
-  update-paywall-preview-resources-submodule:
+  update-paywall-preview-resources-commit:
     docker:
       - image: cimg/ruby:3.2.0
     steps:
+      - checkout
+      - revenuecat/install-gem-unix-dependencies:
+          cache-version: v1
+      - revenuecat/setup-git-credentials
       - run:
-          name: Temporarily failing job until we fix issues with SPM and submodules.
-          command: exit 1
-      # - checkout
-      # - checkout-submodule:
-      #     path: upstream/paywall-preview-resources
-      # - revenuecat/install-gem-unix-dependencies:
-      #     cache-version: v1
-      # - revenuecat/setup-git-credentials
-      # - run:
-      #     name: Update paywall templates
-      #     command: bundle exec fastlane ios update_paywall_preview_resources_submodule
+          name: Update paywall templates
+          command: bundle exec fastlane ios update_paywall_preview_resources_commit
 
   deploy-to-spm:
     docker:
@@ -1495,9 +1513,11 @@ workflows:
       - validate-package-swift:
           name: validate-package-swift-5.7
           xcode_version: "14.0.1"
+          mac_os_executor_name: macos-executor-for-macos-12_6
       - validate-package-swift:
           name: validate-package-swift-5.8
           xcode_version: "14.3.1"
+          mac_os_executor_name: macos-executor
       - run-test-ios-17
       - run-test-ios-18
       - pod-lib-lint
@@ -1592,11 +1612,13 @@ workflows:
 
   record-and-push-paywall-template-screenshots:
     when:
-      and:
-        - not:
-            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
-        - equal: ["main", << pipeline.git.branch >>]
-        - equal: ["default", << pipeline.parameters.action >>]
+      or:
+        - equal: ["record_paywall_screenshots", << pipeline.parameters.action >>]
+        - and:
+            - not:
+                equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+            - equal: ["main", << pipeline.git.branch >>]
+            - equal: ["default", << pipeline.parameters.action >>]
     jobs:
       - record-and-push-paywall-template-screenshots:
           context:
@@ -1606,7 +1628,7 @@ workflows:
     when:
       equal: [update_paywall_templates, << pipeline.parameters.action >>]
     jobs:
-      - update-paywall-preview-resources-submodule
+      - update-paywall-preview-resources-commit
 
   manual-trigger-docs-deploy:
     when:

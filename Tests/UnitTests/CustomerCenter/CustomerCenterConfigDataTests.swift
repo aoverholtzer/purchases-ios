@@ -15,7 +15,7 @@ import Foundation
 import Nimble
 import XCTest
 
-@testable import RevenueCat
+@_spi(Internal) @testable import RevenueCat
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 @available(macOS, unavailable)
@@ -131,6 +131,7 @@ class CustomerCenterConfigDataTests: TestCase {
                     email: "support@example.com",
                     shouldWarnCustomerToUpdate: false,
                     displayPurchaseHistoryLink: true,
+                    displayVirtualCurrencies: true,
                     shouldWarnCustomersAboutMultipleSubscriptions: false
                 )
             ),
