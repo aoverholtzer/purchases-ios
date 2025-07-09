@@ -189,14 +189,22 @@ private extension TemplateViewConfiguration {
 
         #if !os(watchOS)
         case .footer, .condensedFooter:
-            self.backgroundContent
-            #if canImport(UIKit)
-                .roundedCorner(
-                    Constants.defaultCornerRadius,
-                    corners: [.topLeft, .topRight],
-                    edgesIgnoringSafeArea: .all
-                )
-            #endif
+            if #available(iOS 26, *) {
+                UnevenRoundedRectangle(topLeadingRadius: Constants.defaultCornerRadius, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: Constants.defaultCornerRadius, style: .continuous)
+                    .fill(Color.clear)
+                    .glassEffect(.regular,
+                                 in: UnevenRoundedRectangle(topLeadingRadius: Constants.defaultCornerRadius, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: Constants.defaultCornerRadius, style: .continuous))
+                    .ignoresSafeArea()
+            } else {
+                self.backgroundContent
+                    #if canImport(UIKit)
+                    .roundedCorner(
+                        Constants.defaultCornerRadius,
+                        corners: [.topLeft, .topRight],
+                        edgesIgnoringSafeArea: .all
+                    )
+                    #endif
+            }
         #endif
         }
     }
