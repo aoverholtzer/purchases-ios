@@ -306,4 +306,8 @@ class CustomerInfoFixtures {
         )
     }()
 
+    static let customerInfoWithSimulatedStoreSubscriptions: CustomerInfo = {
+        makeCustomerInfo(store: "test")
+    }()
+
 }

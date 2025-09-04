@@ -29,6 +29,7 @@ extension PurchaseInformation {
         productIdentifier: String = "com.revenuecat.pro",
         store: Store = .appStore,
         isSubscription: Bool = false,
+        productType: StoreProduct.ProductType? = nil,
         isTrial: Bool = false,
         isCancelled: Bool = false,
         isExpired: Bool = false,
@@ -47,7 +48,8 @@ extension PurchaseInformation {
         gracePeriodExpiresDate: Date? = nil,
         refundedAtDate: Date? = nil,
         transactionIdentifier: String? = "rc_tx_123",
-        storeTransactionIdentifier: String? = "store_tx_abc"
+        storeTransactionIdentifier: String? = "store_tx_abc",
+        isLifetime: Bool = false
     ) -> PurchaseInformation {
         return PurchaseInformation(
             title: title,
@@ -56,6 +58,7 @@ extension PurchaseInformation {
             productIdentifier: productIdentifier,
             store: store,
             isSubscription: isSubscription,
+            productType: productType,
             isTrial: isTrial,
             isCancelled: isCancelled,
             isExpired: isExpired,
@@ -74,14 +77,18 @@ extension PurchaseInformation {
             gracePeriodExpiresDate: gracePeriodExpiresDate,
             refundedAtDate: refundedAtDate,
             transactionIdentifier: transactionIdentifier,
-            storeTransactionIdentifier: storeTransactionIdentifier
+            storeTransactionIdentifier: storeTransactionIdentifier,
+            isLifetime: isLifetime
         )
     }
 
-    static let monthlyRenewing = PurchaseInformation.mock(
+    static let subscription = PurchaseInformation.mock(
         pricePaid: .nonFree("$4.99"),
         renewalPrice: .nonFree("$4.99"),
         store: .appStore,
+        isSubscription: true,
+        productType: .autoRenewableSubscription,
+        isCancelled: false,
         expirationDate: nil,
         renewalDate: Self.defaulRenewalDate
     )
@@ -92,6 +99,7 @@ extension PurchaseInformation {
         productIdentifier: "product_id_expired",
         store: .appStore,
         isSubscription: true,
+        productType: .autoRenewableSubscription,
         isExpired: true,
         expirationDate: Self.defaultExpirationDate,
         renewalDate: nil
@@ -102,8 +110,10 @@ extension PurchaseInformation {
         pricePaid: .nonFree("$4.99"),
         productIdentifier: "product_id_lifetime",
         isSubscription: true,
+        productType: .nonConsumable,
         expirationDate: nil,
-        renewalDate: nil
+        renewalDate: nil,
+        isLifetime: true
     )
 
     static let free = PurchaseInformation.mock(
@@ -124,6 +134,7 @@ extension PurchaseInformation {
         productIdentifier: "product_id",
         store: .appStore,
         isSubscription: false,
+        productType: .consumable,
         isExpired: false,
         isSandbox: false,
         managementURL: URL(string: "https://www.revenuecat.com"),

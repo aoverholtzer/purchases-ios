@@ -22,7 +22,8 @@ let allDeploymentTargets: DeploymentTargets = .multiplatform(
     iOS: "13.0",
     macOS: "11.0",
     watchOS: "7.0",
-    tvOS: "14.0"
+    tvOS: "14.0",
+    visionOS: "1.3"
 )
 
 // MARK: - Project Definition
@@ -30,7 +31,7 @@ let allDeploymentTargets: DeploymentTargets = .multiplatform(
 let project = Project(
     name: "RevenueCat",
     organizationName: .revenueCatOrgName,
-    settings: .settings(base: [:].automaticCodeSigning(devTeam: .revenueCatTeamID)),
+    settings: .framework,
     targets: [
         // MARK: – Main Library
         .target(
@@ -78,6 +79,7 @@ let project = Project(
                 .snapshotTesting,
                 .ohHTTPStubsSwift
             ],
+            metadata: .metadata(tags: ["RevenueCatTests"])
         ),
 
         .target(
@@ -100,9 +102,9 @@ let project = Project(
             ),
             settings: .settings(
                 base: [
-                    "APPLICATION_EXTENSION_API_ONLY": "YES"
+                    "APPLICATION_EXTENSION_API_ONLY": "YES",
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) ENABLE_CUSTOM_ENTITLEMENT_COMPUTATION"
                 ]
-                .swiftActiveCompilationConditions([.enableCustomEntitlementComputation])
             )
         ),
 
@@ -156,6 +158,7 @@ let project = Project(
                 "../../Tests/UnitTestsHostApp/**/*.swift"
             ],
             dependencies: [],
+            metadata: .metadata(tags: ["RevenueCatTests"])
         ),
 
         // MARK: – StoreKit Unit Tests
@@ -186,7 +189,8 @@ let project = Project(
             ],
             additionalFiles: [
                 "../../Tests/StoreKitUnitTests/UnitTestsConfiguration.storekit"
-            ]
+            ],
+            metadata: .metadata(tags: ["RevenueCatTests"]),
         ),
 
         // MARK: – BackendIntegrationTests Host App
@@ -209,10 +213,11 @@ let project = Project(
             ],
             settings: .settings(
                 base: [
-                    "APPLICATION_EXTENSION_API_ONLY": "YES"
+                    "APPLICATION_EXTENSION_API_ONLY": "YES",
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) ENABLE_CUSTOM_ENTITLEMENT_COMPUTATION"
                 ]
-                .swiftActiveCompilationConditions([.enableCustomEntitlementComputation])
-            )
+            ),
+            metadata: .metadata(tags: ["RevenueCatTests"]),
         ),
 
         .target(
@@ -247,8 +252,11 @@ let project = Project(
                 .storeKitTests
             ],
             settings: .settings(
-                base: [:].swiftActiveCompilationConditions([.enableCustomEntitlementComputation])
-            )
+                base: [
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) ENABLE_CUSTOM_ENTITLEMENT_COMPUTATION"
+                ]
+            ),
+            metadata: .metadata(tags: ["RevenueCatTests"]),
         ),
 
         .target(
@@ -281,6 +289,7 @@ let project = Project(
             ],
             dependencies: [
                 .target(name: "RevenueCat"),
+                .target(name: "BackendIntegrationTestsHostApp"),
                 .nimble,
                 .ohHTTPStubsSwift,
                 .snapshotTesting,
@@ -289,7 +298,8 @@ let project = Project(
             additionalFiles: [
                 "../../Tests/BackendIntegrationTests/RevenueCat_IntegrationPurchaseTesterConfiguration.storekit",
                 "../../BackendIntegrationTests/**.xctestplan"
-            ]
+            ],
+            metadata: .metadata(tags: ["RevenueCatTests"])
         )
 
     ],
@@ -301,14 +311,6 @@ let project = Project(
             testAction: .testPlans([
                     .relativeToRoot("Tests/TestPlans/AllTests.xctestplan")
                 ]
-            ),
-            runAction: .runAction(
-                executable: "RevenueCat",
-                options: .options(
-                    storeKitConfigurationPath: .relativeToRoot(
-                        "Tests/StoreKitUnitTests/UnitTestsConfiguration.storekit"
-                    )
-                )
             ),
             archiveAction: .archiveAction(configuration: "Release"),
             profileAction: .profileAction(configuration: "Release"),
@@ -345,5 +347,5 @@ let project = Project(
             ]),
             runAction: .runAction(configuration: "Debug")
         )
-    ],
+    ]
 )

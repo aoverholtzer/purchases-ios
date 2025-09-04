@@ -20,7 +20,6 @@ import SwiftUI
 @available(macOS, unavailable)
 @available(tvOS, unavailable)
 @available(watchOS, unavailable)
-// swiftlint:disable file_length
 struct RelevantPurchasesListView: View {
 
     @Environment(\.appearance)
@@ -99,7 +98,10 @@ struct RelevantPurchasesListView: View {
                 usesNavigationStack: navigationOptions.usesNavigationStack
             ) {
                 PurchaseHistoryView(
-                    viewModel: PurchaseHistoryViewModel(purchasesProvider: self.viewModel.purchasesProvider)
+                    viewModel: PurchaseHistoryViewModel(
+                        purchasesProvider: self.viewModel.purchasesProvider,
+                        localization: localization
+                    )
                 )
                 .environment(\.appearance, appearance)
                 .environment(\.localization, localization)
@@ -131,44 +133,43 @@ struct RelevantPurchasesListView: View {
     var content: some View {
         ScrollViewWithOSBackground {
             LazyVStack(spacing: 0) {
-                if !customerInfoViewModel.subscriptionsSection.isEmpty {
-                    PurchasesInformationSection(
-                        title: localization[.subscriptionsSectionTitle],
-                        items: customerInfoViewModel.subscriptionsSection,
-                        localization: localization
-                    ) {
-                        viewModel.purchaseInformation = $0
-                    }
-                    .tint(colorScheme == .dark ? .white : .black)
+                if !customerInfoViewModel.hasAnyPurchases {
+                    emptyView
+                        .padding(.horizontal)
+                        .padding(.bottom, 32)
                 } else {
-                    ScrollViewSection(title: localization[.subscriptionsSectionTitle]) {
-                        NoSubscriptionsCardView(localization: localization)
-                            .cornerRadius(10)
-                            .padding(.horizontal)
-                            .padding(.bottom, 32)
+                    if !customerInfoViewModel.subscriptionsSection.isEmpty {
+                        PurchasesInformationSection(
+                            title: localization[.subscriptionsSectionTitle],
+                            items: customerInfoViewModel.subscriptionsSection,
+                            localization: localization
+                        ) {
+                            viewModel.purchaseInformation = $0
+                        }
+                        .tint(colorScheme == .dark ? .white : .black)
                     }
-                }
 
-                if !customerInfoViewModel.nonSubscriptionsSection.isEmpty {
-                    PurchasesInformationSection(
-                        title: localization[.purchasesSectionTitle],
-                        items: activeNonSubscriptionPurchasesToShow,
-                        localization: localization
-                    ) {
-                        viewModel.purchaseInformation = $0
+                    if !customerInfoViewModel.nonSubscriptionsSection.isEmpty {
+                        PurchasesInformationSection(
+                            title: localization[.purchasesSectionTitle],
+                            items: activeNonSubscriptionPurchasesToShow,
+                            localization: localization
+                        ) {
+                            viewModel.purchaseInformation = $0
+                        }
+                        .tint(colorScheme == .dark ? .white : .black)
                     }
-                    .tint(colorScheme == .dark ? .white : .black)
-                }
 
-                if let virtualCurrencies = customerInfoViewModel.virtualCurrencies,
-                   !virtualCurrencies.all.isEmpty,
-                    customerInfoViewModel.shouldShowVirtualCurrencies {
-                    VirtualCurrenciesScrollViewWithOSBackgroundSection(
-                        virtualCurrencies: virtualCurrencies,
-                        onSeeAllInAppCurrenciesButtonTapped: self.viewModel.displayAllInAppCurrenciesScreen
-                    )
+                    if let virtualCurrencies = customerInfoViewModel.virtualCurrencies,
+                       !virtualCurrencies.all.isEmpty,
+                        customerInfoViewModel.shouldShowVirtualCurrencies {
+                        VirtualCurrenciesScrollViewWithOSBackgroundSection(
+                            virtualCurrencies: virtualCurrencies,
+                            onSeeAllInAppCurrenciesButtonTapped: self.viewModel.displayAllInAppCurrenciesScreen
+                        )
 
-                    Spacer().frame(height: 16)
+                        Spacer().frame(height: 16)
+                    }
                 }
 
                 ScrollViewSection(title: localization[.actionsSectionTitle]) {
@@ -179,6 +180,8 @@ struct RelevantPurchasesListView: View {
 
                 if viewModel.shouldShowSeeAllPurchases {
                     seeAllSubscriptionsButton
+                        .tint(colorScheme == .dark ? .white : .black)
+                        .padding(.horizontal)
                         .padding(.bottom, 32)
                 } else {
                     Spacer().frame(height: 16)
@@ -194,27 +197,50 @@ struct RelevantPurchasesListView: View {
         }
     }
 
+    private var emptyView: some View {
+        NoSubscriptionsCardView(
+            screenOffering: viewModel.screen.offering,
+            screen: viewModel.screen,
+            localization: localization,
+            purchasesProvider: viewModel.purchasesProvider
+        )
+    }
+
     private var activeNonSubscriptionPurchasesToShow: [PurchaseInformation] {
         Array(customerInfoViewModel.nonSubscriptionsSection
             .prefix(RelevantPurchasesListViewModel.maxNonSubscriptionsToShow))
     }
 
+    @ViewBuilder
     private var seeAllSubscriptionsButton: some View {
-        Button {
-            viewModel.showAllPurchases = true
-        } label: {
-            CompatibilityLabeledContent(localization[.seeAllPurchases]) {
-                Image(systemName: "chevron.forward")
+        if #available(iOS 26.0, *) {
+            Button {
+                viewModel.showAllPurchases = true
+            } label: {
+                CompatibilityLabeledContent(localization[.seeAllPurchases]) {
+                    Image(systemName: "chevron.forward")
+                }
+                .padding()
+                .background(Color(colorScheme == .light
+                                  ? UIColor.systemBackground
+                                  : UIColor.secondarySystemBackground),
+                            in: .rect(cornerRadius: CustomerCenterStylingUtilities.cornerRadius))
             }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
-            .background(Color(colorScheme == .light
-                              ? UIColor.systemBackground
-                              : UIColor.secondarySystemBackground))
-            .cornerRadius(10)
-            .padding(.horizontal)
+        } else {
+            Button {
+                viewModel.showAllPurchases = true
+            } label: {
+                CompatibilityLabeledContent(localization[.seeAllPurchases]) {
+                    Image(systemName: "chevron.forward")
+                }
+                .padding(.horizontal)
+                .padding(.vertical, 12)
+                .background(Color(colorScheme == .light
+                                  ? UIColor.systemBackground
+                                  : UIColor.secondarySystemBackground),
+                            in: .rect(cornerRadius: CustomerCenterStylingUtilities.cornerRadius))
+            }
         }
-        .tint(colorScheme == .dark ? .white : .black)
     }
 
     private var dateFormatter: DateFormatter {
@@ -242,6 +268,7 @@ struct RelevantPurchasesListView_Previews: PreviewProvider {
             ),
             PurchaseInformation.mock(
                 store: .appStore,
+                isSubscription: true,
                 isExpired: false
             ),
             .free
@@ -267,7 +294,7 @@ struct RelevantPurchasesListView_Previews: PreviewProvider {
                 .environment(\.supportInformation, warningOffMock.support)
             }
             .preferredColorScheme(colorScheme)
-            .previewDisplayName("Active subs - \(colorScheme)")
+            .previewDisplayName("Subscriptions only - \(colorScheme)")
 
             CompatibilityNavigationStack {
                 RelevantPurchasesListView(
@@ -284,7 +311,7 @@ struct RelevantPurchasesListView_Previews: PreviewProvider {
                 .environment(\.supportInformation, warningOffMock.support)
             }
             .preferredColorScheme(colorScheme)
-            .previewDisplayName("No subscriptions - \(colorScheme)")
+            .previewDisplayName("Purchases only - \(colorScheme)")
 
             CompatibilityNavigationStack {
                 RelevantPurchasesListView(
@@ -302,23 +329,6 @@ struct RelevantPurchasesListView_Previews: PreviewProvider {
             }
             .preferredColorScheme(colorScheme)
             .previewDisplayName("Empty - \(colorScheme)")
-
-            CompatibilityNavigationStack {
-                RelevantPurchasesListView(
-                    customerInfoViewModel: CustomerCenterViewModel(
-                        activeSubscriptionPurchases: [],
-                        activeNonSubscriptionPurchases: [.consumable, .lifetime],
-                        configuration: .default
-                    ),
-                    viewModel: RelevantPurchasesListViewModel(
-                        screen: warningOffMock.screens[.management]!,
-                        shouldShowSeeAllPurchases: true
-                    )
-                )
-                .environment(\.supportInformation, warningOffMock.support)
-            }
-            .preferredColorScheme(colorScheme)
-            .previewDisplayName("No subscriptions - \(colorScheme)")
 
             CompatibilityNavigationStack {
                 RelevantPurchasesListView(
@@ -337,25 +347,7 @@ struct RelevantPurchasesListView_Previews: PreviewProvider {
                 .environment(\.supportInformation, warningOffMock.support)
             }
             .preferredColorScheme(colorScheme)
-            .previewDisplayName("Active subs & other - \(colorScheme)")
-
-            CompatibilityNavigationStack {
-                RelevantPurchasesListView(
-                    customerInfoViewModel: CustomerCenterViewModel(
-                        activeSubscriptionPurchases: [],
-                        activeNonSubscriptionPurchases: [],
-                        configuration: .default
-                    ),
-                    viewModel: RelevantPurchasesListViewModel(
-                        screen: warningOffMock.screens[.management]!,
-                        activePurchases: [],
-                        shouldShowSeeAllPurchases: false
-                    )
-                )
-                .environment(\.supportInformation, warningOffMock.support)
-            }
-            .preferredColorScheme(colorScheme)
-            .previewDisplayName("Empty - \(colorScheme)")
+            .previewDisplayName("Subscriptions & other - \(colorScheme)")
 
             CompatibilityNavigationStack {
                 RelevantPurchasesListView(

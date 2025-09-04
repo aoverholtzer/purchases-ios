@@ -11,7 +11,7 @@ let allDestinations: Destinations = [
 let project = Project(
     name: "testCustomEntitlementsComputation",
     organizationName: .revenueCatOrgName,
-    settings: .settings(base: [:].automaticCodeSigning(devTeam: .revenueCatTeamID)),
+    settings: .appProject,
     targets: [
         .target(
             name: "testCustomEntitlementsComputation",
@@ -37,7 +37,12 @@ let project = Project(
             dependencies: [
                 .revenueCat,
                 .revenueCatUI,
-            ]
+            ],
+            settings: .appTarget(including: [
+                    "APPLICATION_EXTENSION_API_ONLY": "YES",
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "$(inherited) ENABLE_CUSTOM_ENTITLEMENT_COMPUTATION"
+                ]
+            )
         )
     ],
 )

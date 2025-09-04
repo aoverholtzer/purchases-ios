@@ -62,7 +62,6 @@ struct PurchasesInformationSection: View {
                         localization: localization,
                         accessibilityIdentifier: "purchase_card_\(offset)"
                     )
-                    .cornerRadius(10)
                     .padding(.horizontal)
                 }
                 .padding(.bottom, 16)
@@ -70,6 +69,25 @@ struct PurchasesInformationSection: View {
 
             Spacer().frame(height: 16)
         }
+    }
+}
+
+@available(iOS 15.0, *)
+@available(macOS, unavailable)
+@available(tvOS, unavailable)
+@available(watchOS, unavailable)
+private struct CardStyleModifier: ViewModifier {
+    @Environment(\.colorScheme)
+    private var colorScheme
+
+    func body(content: Content) -> some View {
+        content
+            .padding()
+            .background(Color(colorScheme == .light
+                              ? UIColor.systemBackground
+                              : UIColor.secondarySystemBackground),
+                        in: .rect(cornerRadius: CustomerCenterStylingUtilities.cornerRadius))
+            .padding(.horizontal)
     }
 }
 
@@ -86,6 +104,8 @@ struct AccountDetailsSection: View {
     let originalAppUserId: String
     let localization: CustomerCenterConfigData.Localization
 
+    @State
+    private var didCopyID = false
     init(
         originalPurchaseDate: Date?,
         originalAppUserId: String,
@@ -97,6 +117,24 @@ struct AccountDetailsSection: View {
     }
 
     var body: some View {
+#if DEBUG
+        debugBody
+#else
+        if let originalPurchaseDate {
+            ScrollViewSection(title: localization[.accountDetails]) {
+                VStack {
+                    CompatibilityLabeledContent(
+                        localization[.dateWhenAppWasPurchased],
+                        content: Self.dateFormatter.string(from: originalPurchaseDate)
+                    )
+                }
+                .modifier(CardStyleModifier())
+            }
+        }
+#endif
+    }
+
+    var debugBody: some View {
         ScrollViewSection(title: localization[.accountDetails]) {
             VStack {
                 if let originalPurchaseDate {
@@ -108,28 +146,55 @@ struct AccountDetailsSection: View {
                     Divider()
                 }
 
-                CompatibilityLabeledContent(
-                    localization[.userId],
-                    content: originalAppUserId
-                )
-                .contextMenu {
-                    Button {
-                        UIPasteboard.general.string = originalAppUserId
-                    } label: {
-                        Text(localization[.copy])
-                        Image(systemName: "doc.on.clipboard")
-                    }
-                }
+                userIdView
             }
-            .padding()
-            .background(Color(colorScheme == .light
-                              ? UIColor.systemBackground
-                              : UIColor.secondarySystemBackground))
-            .cornerRadius(10)
-            .padding(.horizontal)
+            .modifier(CardStyleModifier())
         }
     }
 
+    @ViewBuilder
+    var userIdView: some View {
+        if #available(iOS 17.0, *) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(localization[.userId])
+                    Spacer()
+                    Button(localization[.copy], systemImage: didCopyID ? "checkmark" : "document.on.document") {
+                        UIPasteboard.general.string = originalAppUserId
+                        withAnimation {
+                            didCopyID = true
+                        }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                            withAnimation {
+                                self.didCopyID = false
+                            }
+                        }
+                    }
+                    .labelStyle(.iconOnly)
+                    .frame(minHeight: 24)
+                    .contentTransition(.symbolEffect(.replace))
+                    .imageScale(.small)
+                }
+
+                Text(originalAppUserId)
+                    .textSelection(.enabled)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            HStack {
+                Text(localization[.userId])
+                Spacer()
+                Text(originalAppUserId)
+                    .textSelection(.enabled)
+            }
+            .contentShape(.rect(cornerRadius: 26))
+            .contextMenu {
+                Button(localization[.copy], systemImage: "document.on.document") {
+                    UIPasteboard.general.string = originalAppUserId
+                }
+            }
+        }
+    }
     private static var dateFormatter: DateFormatter {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium

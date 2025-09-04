@@ -277,8 +277,11 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
     private let healthManager: SDKHealthManager
 
     private let syncAttributesAndOfferingsIfNeededRateLimiter = RateLimiter(maxCalls: 5, period: 60)
+    private let overridePreferredUILocaleRateLimiter = RateLimiter(maxCalls: 2, period: 60)
     private let diagnosticsTracker: DiagnosticsTrackerType?
     private let virtualCurrencyManager: VirtualCurrencyManagerType
+
+    @_spi(Internal) public let subscriptionHistoryTracker = SubscriptionHistoryTracker()
 
     // swiftlint:disable:next function_body_length cyclomatic_complexity
     convenience init(apiKey: String,
@@ -294,7 +297,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                      dangerousSettings: DangerousSettings? = nil,
                      showStoreMessagesAutomatically: Bool,
                      diagnosticsEnabled: Bool = false,
-                     preferredLocale: String?
+                     preferredLocale: String?,
+                     automaticDeviceIdentifierCollectionEnabled: Bool = true
     ) {
         if userDefaults != nil {
             Logger.debug(Strings.configure.using_custom_user_defaults)
@@ -304,11 +308,15 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         let receiptRefreshRequestFactory = ReceiptRefreshRequestFactory()
         let fetcher = StoreKitRequestFetcher(requestFactory: receiptRefreshRequestFactory,
                                              operationDispatcher: operationDispatcher)
+
+        let apiKeyValidationResult = Configuration.validateAndLog(apiKey: apiKey)
+
         let systemInfo = SystemInfo(
             platformInfo: platformInfo,
             finishTransactions: !observerMode,
             operationDispatcher: operationDispatcher,
             storeKitVersion: storeKitVersion,
+            apiKeyValidationResult: apiKeyValidationResult,
             responseVerificationMode: responseVerificationMode,
             dangerousSettings: dangerousSettings,
             preferredLocalesProvider: PreferredLocalesProvider(preferredLocaleOverride: preferredLocale)
@@ -369,16 +377,19 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                 diagnosticsTracker: diagnosticsTracker
             ))
 
+        let simulatedStorePurchaseHandler = SimulatedStorePurchaseHandler(systemInfo: systemInfo)
+
         let offeringsFactory = OfferingsFactory()
         let receiptParser = PurchasesReceiptParser.default
         let transactionsManager = TransactionsManager(receiptParser: receiptParser)
 
-        let productsRequestFactory = ProductsRequestFactory()
         let productsManager = CachingProductsManager(
-            manager: ProductsManager(productsRequestFactory: productsRequestFactory,
-                                     diagnosticsTracker: diagnosticsTracker,
-                                     systemInfo: systemInfo,
-                                     requestTimeout: storeKitTimeout)
+            manager: ProductsManagerFactory.createManager(apiKeyValidationResult: apiKeyValidationResult,
+                                                          diagnosticsTracker: diagnosticsTracker,
+                                                          systemInfo: systemInfo,
+                                                          backend: backend,
+                                                          deviceCache: deviceCache,
+                                                          requestTimeout: storeKitTimeout)
         )
 
         let transactionPoster = TransactionPoster(
@@ -417,17 +428,20 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         }
 
         let attributionDataMigrator = AttributionDataMigrator()
-        let subscriberAttributesManager = SubscriberAttributesManager(backend: backend,
-                                                                      deviceCache: deviceCache,
-                                                                      operationDispatcher: operationDispatcher,
-                                                                      attributionFetcher: attributionFetcher,
-                                                                      attributionDataMigrator: attributionDataMigrator)
+        let subscriberAttributesManager = SubscriberAttributesManager(
+            backend: backend,
+            deviceCache: deviceCache,
+            operationDispatcher: operationDispatcher,
+            attributionFetcher: attributionFetcher,
+            attributionDataMigrator: attributionDataMigrator,
+            automaticDeviceIdentifierCollectionEnabled: automaticDeviceIdentifierCollectionEnabled)
         let identityManager = IdentityManager(deviceCache: deviceCache,
                                               systemInfo: systemInfo,
                                               backend: backend,
                                               customerInfoManager: customerInfoManager,
                                               attributeSyncing: subscriberAttributesManager,
-                                              appUserID: appUserID)
+                                              appUserID: appUserID
+        )
 
         let paywallEventsManager: PaywallEventsManagerType?
         do {
@@ -521,6 +535,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                 return .init(
                     productsManager: productsManager,
                     paymentQueueWrapper: paymentQueueWrapper,
+                    simulatedStorePurchaseHandler: simulatedStorePurchaseHandler,
                     systemInfo: systemInfo,
                     subscriberAttributes: subscriberAttributes,
                     operationDispatcher: operationDispatcher,
@@ -553,6 +568,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                 return .init(
                     productsManager: productsManager,
                     paymentQueueWrapper: paymentQueueWrapper,
+                    simulatedStorePurchaseHandler: simulatedStorePurchaseHandler,
                     systemInfo: systemInfo,
                     subscriberAttributes: subscriberAttributes,
                     operationDispatcher: operationDispatcher,
@@ -593,7 +609,9 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         let paywallCache: PaywallCacheWarmingType?
 
         if #available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *) {
-            paywallCache = PaywallCacheWarming(introEligibiltyChecker: trialOrIntroPriceChecker)
+            paywallCache = PaywallCacheWarming(
+                introEligibiltyChecker: trialOrIntroPriceChecker
+            )
         } else {
             paywallCache = nil
         }
@@ -1455,7 +1473,8 @@ public extension Purchases {
                   dangerousSettings: configuration.dangerousSettings,
                   showStoreMessagesAutomatically: configuration.showStoreMessagesAutomatically,
                   diagnosticsEnabled: configuration.diagnosticsEnabled,
-                  preferredLocale: configuration.preferredLocale
+                  preferredLocale: configuration.preferredLocale,
+                  automaticDeviceIdentifierCollectionEnabled: configuration.automaticDeviceIdentifierCollectionEnabled
         )
     }
 
@@ -1722,7 +1741,8 @@ public extension Purchases {
         dangerousSettings: DangerousSettings?,
         showStoreMessagesAutomatically: Bool,
         diagnosticsEnabled: Bool,
-        preferredLocale: String?
+        preferredLocale: String?,
+        automaticDeviceIdentifierCollectionEnabled: Bool = true
     ) -> Purchases {
         return self.setDefaultInstance(
             .init(apiKey: apiKey,
@@ -1738,7 +1758,8 @@ public extension Purchases {
                   dangerousSettings: dangerousSettings,
                   showStoreMessagesAutomatically: showStoreMessagesAutomatically,
                   diagnosticsEnabled: diagnosticsEnabled,
-                  preferredLocale: preferredLocale)
+                  preferredLocale: preferredLocale,
+                  automaticDeviceIdentifierCollectionEnabled: automaticDeviceIdentifierCollectionEnabled)
         )
     }
 
@@ -1910,7 +1931,18 @@ extension Purchases {
 
     // swiftlint:disable missing_docs
     @_spi(Internal) public func overridePreferredLocale(_ locale: String?) {
+        guard locale != self.systemInfo.preferredLocaleOverride else {
+            return
+        }
+
         self.systemInfo.overridePreferredLocale(locale)
+
+        if self.overridePreferredUILocaleRateLimiter.shouldProceed() {
+            // Refetches new offerings with preferred locale
+            self.getOfferings(fetchPolicy: .default, fetchCurrent: true) { _, _ in
+                // No-op
+            }
+        }
     }
 
 }

@@ -24,6 +24,7 @@ import Foundation
     @_spi(Internal) public let appearance: Appearance
     @_spi(Internal) public let localization: Localization
     @_spi(Internal) public let support: Support
+    @_spi(Internal) public let changePlans: [ChangePlan]
     @_spi(Internal) public let lastPublishedAppVersion: String?
     @_spi(Internal) public let productId: UInt?
 
@@ -32,6 +33,7 @@ import Foundation
         appearance: Appearance,
         localization: Localization,
         support: Support,
+        changePlans: [ChangePlan],
         lastPublishedAppVersion: String?,
         productId: UInt?
     ) {
@@ -39,6 +41,7 @@ import Foundation
         self.appearance = appearance
         self.localization = localization
         self.support = support
+        self.changePlans = changePlans
         self.lastPublishedAppVersion = lastPublishedAppVersion
         self.productId = productId
     }
@@ -55,6 +58,7 @@ import Foundation
 
         @_spi(Internal) public enum CommonLocalizedString: String, Equatable {
 
+            case buySubscrition = "buy_subscription"
             case copy = "copy"
             case noThanks = "no_thanks"
             case noSubscriptionsFound = "no_subscriptions_found"
@@ -138,6 +142,7 @@ import Foundation
             case storeAppStore = "app_store"
             case storeMacAppStore = "mac_app_store"
             case storePlayStore = "google_play_store"
+            case simulatedStore = "simulated_store"
             case storeStripe = "stripe"
             case storePromotional = "promotional"
             case storeAmazon = "amazon_store"
@@ -146,6 +151,8 @@ import Foundation
             case storeUnknownStore = "unknown_store"
             case storePaddle = "store_paddle"
             case storeWeb = "store_web"
+            case typeSubscription = "type_subscription"
+            case typeOneTimePurchase = "type_one_time_purchase"
             case debugHeaderTitle = "Debug"
             case seeAllVirtualCurrencies = "see_all_virtual_currencies"
             case virtualCurrencyBalancesScreenHeader = "virtual_currency_balances_screen_header"
@@ -170,6 +177,8 @@ import Foundation
 
             @_spi(Internal) public var defaultValue: String {
                 switch self {
+                case .buySubscrition:
+                    return "Subscribe"
                 case .copy:
                     return "Copy"
                 case .noThanks:
@@ -356,6 +365,10 @@ import Foundation
                     return "Paddle"
                 case .storeWeb:
                     return "Web"
+                case .typeSubscription:
+                    return "Subscription"
+                case .typeOneTimePurchase:
+                    return "One-time Purchase"
                 case .debugHeaderTitle:
                     return "Debug"
                 case .virtualCurrencyBalancesScreenHeader:
@@ -399,6 +412,8 @@ import Foundation
                     return "Subscriptions"
                 case .purchasesSectionTitle:
                     return "Purchases"
+                case .simulatedStore:
+                    return "Test Store"
                 }
             }
         }
@@ -417,6 +432,7 @@ import Foundation
         @_spi(Internal) public let type: PathType
         @_spi(Internal) public let detail: PathDetail?
         @_spi(Internal) public let refundWindowDuration: RefundWindowDuration?
+        @_spi(Internal) public let customActionIdentifier: String?
 
         @_spi(Internal) public init(
             id: String,
@@ -425,7 +441,8 @@ import Foundation
             openMethod: OpenMethod? = nil,
             type: PathType,
             detail: PathDetail?,
-            refundWindowDuration: RefundWindowDuration? = nil
+            refundWindowDuration: RefundWindowDuration? = nil,
+            customActionIdentifier: String? = nil
         ) {
             self.id = id
             self.title = title
@@ -434,6 +451,7 @@ import Foundation
             self.type = type
             self.detail = detail
             self.refundWindowDuration = refundWindowDuration
+            self.customActionIdentifier = customActionIdentifier
         }
 
         @_spi(Internal) public enum PathDetail: Equatable {
@@ -455,6 +473,7 @@ import Foundation
             case changePlans = "CHANGE_PLANS"
             case cancel = "CANCEL"
             case customUrl = "CUSTOM_URL"
+            case customAction = "CUSTOM_ACTION"
             case unknown
 
             init(from rawValue: String) {
@@ -469,6 +488,8 @@ import Foundation
                     self = .cancel
                 case "CUSTOM_URL":
                     self = .customUrl
+                case "CUSTOM_ACTION":
+                    self = .customAction
                 default:
                     self = .unknown
                 }
@@ -622,12 +643,20 @@ import Foundation
         @_spi(Internal) public let title: String
         @_spi(Internal) public let subtitle: String?
         @_spi(Internal) public let paths: [HelpPath]
+        @_spi(Internal) public let offering: ScreenOffering?
 
-        @_spi(Internal) public init(type: ScreenType, title: String, subtitle: String?, paths: [HelpPath]) {
+        @_spi(Internal) public init(
+            type: ScreenType,
+            title: String,
+            subtitle: String?,
+            paths: [HelpPath],
+            offering: ScreenOffering?
+        ) {
             self.type = type
             self.title = title
             self.subtitle = subtitle
             self.paths = paths
+            self.offering = offering
         }
 
         @_spi(Internal) public enum ScreenType: String, Equatable {
@@ -673,6 +702,55 @@ import Foundation
 
     }
 
+    @_spi(Internal) public struct ChangePlan: Equatable {
+        @_spi(Internal) public let groupId: String
+        @_spi(Internal) public let groupName: String
+        @_spi(Internal) public let products: [ChangePlanProduct]
+
+        @_spi(Internal) public init(
+            groupId: String,
+            groupName: String,
+            products: [ChangePlanProduct]
+        ) {
+            self.groupId = groupId
+            self.groupName = groupName
+            self.products = products
+        }
+    }
+
+    @_spi(Internal) public struct ChangePlanProduct: Equatable {
+        @_spi(Internal) public let productId: String
+        @_spi(Internal) public let selected: Bool
+
+        @_spi(Internal) public init(
+            productId: String,
+            selected: Bool
+        ) {
+            self.productId = productId
+            self.selected = selected
+        }
+    }
+
+    @_spi(Internal) public struct ScreenOffering: Equatable {
+        @_spi(Internal) public let type: OfferingType
+        @_spi(Internal) public let offeringId: String?
+        @_spi(Internal) public let buttonText: String?
+
+        @_spi(Internal) public init(
+            type: OfferingType,
+            offeringId: String?,
+            buttonText: String?
+        ) {
+            self.type = type
+            self.offeringId = offeringId
+            self.buttonText = buttonText
+        }
+
+        @_spi(Internal) public enum OfferingType: String, Equatable {
+            case current = "CURRENT"
+            case specific = "SPECIFIC"
+        }
+    }
 }
 
 @available(iOS 14.0, macOS 11.0, tvOS 14.0, watchOS 7.0, *)
@@ -689,6 +767,11 @@ extension CustomerCenterConfigData {
         self.support = Support(from: response.customerCenter.support)
         self.lastPublishedAppVersion = response.lastPublishedAppVersion
         self.productId = response.itunesTrackId
+        self.changePlans = response.customerCenter.changePlans.map {
+            .init(groupId: $0.groupId, groupName: $0.groupName, products: $0.products.map {
+                .init(productId: $0.productId, selected: $0.selected)
+            })
+        }
     }
 
 }
@@ -701,6 +784,23 @@ extension CustomerCenterConfigData.Screen {
         self.title = response.title
         self.subtitle = response.subtitle
         self.paths = response.paths.compactMap { CustomerCenterConfigData.HelpPath(from: $0) }
+        self.offering = response.offering.map { offering in
+            switch offering.type {
+            case CustomerCenterConfigData.ScreenOffering.OfferingType.specific.rawValue:
+                return CustomerCenterConfigData.ScreenOffering(
+                    type: .specific,
+                    offeringId: offering.offeringId,
+                    buttonText: offering.buttonText
+                )
+
+            default:
+                return CustomerCenterConfigData.ScreenOffering(
+                    type: .current,
+                    offeringId: nil,
+                    buttonText: offering.buttonText
+                )
+            }
+        }
     }
 
 }
@@ -768,6 +868,8 @@ extension CustomerCenterConfigData.HelpPath {
         } else {
             self.refundWindowDuration = nil
         }
+
+        self.customActionIdentifier = response.actionIdentifier
     }
 }
 
