@@ -1,3 +1,184 @@
+## 5.37.0
+## RevenueCat SDK
+### ✨ New Features
+* MON-1193 Optional transitions (delayed back button) (#5490) via Jacob Rakidzich (@JZDesign)
+
+## RevenueCatUI SDK
+### 🐞 Bugfixes
+* Fix Paywall from Customer Center when `purchasesAreCompletedBy == .myApp` (#5512) via Antonio Pallares (@ajpallares)
+### Paywallv2
+#### 🐞 Bugfixes
+* Fix markdown bold text in paywalls (#5517) via Antonio Pallares (@ajpallares)
+
+### 🔄 Other Changes
+* Refetch offerings when preferred locale is set (#5511) via Josh Holtz (@joshdholtz)
+* Post receipt in for purchases in Test Store (#5515) via Antonio Pallares (@ajpallares)
+* Rename Test Store to Simulated Store internally (#5459) via Antonio Pallares (@ajpallares)
+* Untrack testEntitlementsComputation xcodeproj (#5514) via Facundo Menzella (@facumenzella)
+* Extend appTarget settings to pass custom settings (#5470) via Facundo Menzella (@facumenzella)
+* Fix compilation error in Xcode 14 (#5513) via Antonio Pallares (@ajpallares)
+* Make TrialOrIntroEligibilityChecker @_spi public (#5461) via Antonio Pallares (@ajpallares)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5510) via RevenueCat Git Bot (@RCGitBot)
+
+## 5.36.0
+## RevenueCat SDK
+### ✨ New Features
+* Add option to disable automatic ID collection when setting attribution network IDs at configuration time (#5504) via Toni Rico (@tonidero)
+### 🐞 Bugfixes
+* fix compilation errors for Xcode 14.2 (swift 5.7) (#5494) via Facundo Menzella (@facumenzella)
+
+## RevenueCatUI SDK
+### Customer Center
+#### ✨ New Features
+* Add button_text to ScreenOffering (#5501) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Fix dark mode button for featured offering + localized header (#5502) via Facundo Menzella (@facumenzella)
+* Address virtual currencies with zero units in customer center (#5500) via Facundo Menzella (@facumenzella)
+* Fix title and price of non-Google purchases in Customer Center (#5465) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* Fix backend integration tests (#5505) via Toni Rico (@tonidero)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5498) via RevenueCat Git Bot (@RCGitBot)
+* Fix spelling errors in the style guide (#5497) via Jacob Rakidzich (@JZDesign)
+
+## 5.35.1
+## RevenueCatUI SDK
+### Customer Center
+#### 🐞 Bugfixes
+* Don't show subscriptions title if there are no subscriptions (#5485) via Facundo Menzella (@facumenzella)
+* Rename subscribe to buy_subscription in customer center (#5483) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* Fix the tests and implicit returns that broke our CI on main (#5493) via Jacob Rakidzich (@JZDesign)
+* Added APIs for hybrid SDKs to set presentedOfferingContext (#5491) via Rick (@rickvdl)
+* Create File Repository for use in upcoming feature work (#5477) via Jacob Rakidzich (@JZDesign)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5488) via RevenueCat Git Bot (@RCGitBot)
+* Add tag RevenueCatTests to enable tuist generate tag:RevenueCatTests (#5471) via Facundo Menzella (@facumenzella)
+* Add danger rule to show a warning if new files are not added to Revenuecat.xcodeproj (#5473) via Facundo Menzella (@facumenzella)
+
+## 5.35.0
+## RevenueCatUI SDK
+### Customer Center
+#### ✨ New Features
+* Show a subscribe button in customer center when there are no subscriptions (#5457) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Add NoSubscriptionsViewModel to project file (#5472) via Facundo Menzella (@facumenzella)
+* fix non-renewable appstore PATHs for customer center (#5468) via Facundo Menzella (@facumenzella)
+* Show account id only debug for customer center (#5466) via Facundo Menzella (@facumenzella)
+### Paywall Components
+#### 🐞 Bugfixes
+* Package component doesn't wrap content in button if there is a purchase button inside of it (#5456) via Josh Holtz (@joshdholtz)
+
+### 🔄 Other Changes
+* Add private CardStyleModifier (#5467) via Facundo Menzella (@facumenzella)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5463) via RevenueCat Git Bot (@RCGitBot)
+* Crash on release when using a Test Store API key (#5453) via Antonio Pallares (@ajpallares)
+* Disable restore and sync purchases in Test Store (#5452) via Antonio Pallares (@ajpallares)
+* Create StoreTransaction for Test Store purchases (#5434) via Antonio Pallares (@ajpallares)
+* Fix PurchaseTester crash in Mac Catalyst (#5448) via Antonio Pallares (@ajpallares)
+* Fix previews of paywall components not using Mac Catalyst button styling applied at top-level of Paywalls V2 (#5444) via Chris Lindsay (@clindsay3)
+
+## 5.34.0
+## RevenueCat SDK
+### Customer Center
+#### ✨ New Features
+* Introduce custom actions to customer center (#5407) via Facundo Menzella (@facumenzella)
+#### 🐞 Bugfixes
+* Use navigation options in feedback survey in customer center (#5431) via Facundo Menzella (@facumenzella)
+* Allow custom URL for empty screen in customer center (#5432) via Facundo Menzella (@facumenzella)
+* Add fallback for change plans id and only display selected (#5422) via Facundo Menzella (@facumenzella)
+
+## RevenueCatUI SDK
+### ✨ New Features
+* Add Azerbaijani locale support for Paywalls (#5435) via Franco Correa (@francocorreasosa)
+### 🐞 Bugfixes
+* Improve paywall tabs default state and toggle behavior (#5430) via Josh Holtz (@joshdholtz)
+### Paywallv2
+#### ✨ New Features
+* Add offer code redemption support to paywall buttons (#5437) via Josh Holtz (@joshdholtz)
+* Add promotional offers to paywalls (#5296) via Josh Holtz (@joshdholtz)
+
+### 🔄 Other Changes
+* Delete .swiftpm scheme folder to avoid scheme pollution (#5440) via Facundo Menzella (@facumenzella)
+* Add Test Store enum case to `Store` (#5438) via Antonio Pallares (@ajpallares)
+* [EXTERNAL] Adds a convenience method to set the Amplitude User ID and Amplitude Device ID (#5425) via @alpennec (#5446) via Antonio Pallares (@ajpallares)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5445) via RevenueCat Git Bot (@RCGitBot)
+* Add Mac Catalyst and iPad/iPhone app on Mac Paywall Validation Screenshot Generation (#5371) via Chris Lindsay (@clindsay3)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5436) via RevenueCat Git Bot (@RCGitBot)
+* Add simulate failure button to Test Store purchase UI (#5429) via Antonio Pallares (@ajpallares)
+* Add missing availability condition in unit tests (#5433) via Antonio Pallares (@ajpallares)
+* Add Test Store Products Manager (#5426) via Antonio Pallares (@ajpallares)
+* Add GetWebBillingProductsOperation (#5419) via Antonio Pallares (@ajpallares)
+* Add missing file to old project (#5428) via Facundo Menzella (@facumenzella)
+* Add Test Store purchase UI (#5403) via Antonio Pallares (@ajpallares)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5423) via RevenueCat Git Bot (@RCGitBot)
+* Display VC Name in Customer Center (#5383) via Will Taylor (@fire-at-will)
+
+## 5.33.1
+## RevenueCat SDK
+### Customer Center
+#### 🐞 Bugfixes
+* Replace isLifetimeSubscription for isLifetime (#5417) via Facundo Menzella (@facumenzella)
+* Dont show cancel if non-sub for customer center (#5415) via Facundo Menzella (@facumenzella)
+### Virtual Currencies
+#### 🐞 Bugfixes
+* Update VC Caching Log Message (#5404) via Will Taylor (@fire-at-will)
+
+### 🔄 Other Changes
+* Fix color space on Mac screenshots. (#5375) via Chris Lindsay (@clindsay3)
+* Fix issue where previews running on Emerge servers were not following specialized codepaths for previews (#5413) via Chris Lindsay (@clindsay3)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5418) via RevenueCat Git Bot (@RCGitBot)
+* Add missing RevenueCatUI test plans (#5414) via Facundo Menzella (@facumenzella)
+* Rename internal WebProducts APIs to WebOfferingProducts (#5416) via Antonio Pallares (@ajpallares)
+* Introduce tuist-generate-workspace for CircleCI (#5412) via Facundo Menzella (@facumenzella)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5411) via RevenueCat Git Bot (@RCGitBot)
+* Add an app to run paywall validation tests locally (#5370) via Chris Lindsay (@clindsay3)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5408) via RevenueCat Git Bot (@RCGitBot)
+* Bump danger from 9.5.1 to 9.5.3 (#5409) via dependabot[bot] (@dependabot[bot])
+* Bump fastlane from 2.227.2 to 2.228.0 (#5410) via dependabot[bot] (@dependabot[bot])
+* Bump nokogiri from 1.18.8 to 1.18.9 (#5406) via dependabot[bot] (@dependabot[bot])
+* Bump nokogiri from 1.18.8 to 1.18.9 in /Tests/InstallationTests/CocoapodsInstallation (#5405) via dependabot[bot] (@dependabot[bot])
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5402) via RevenueCat Git Bot (@RCGitBot)
+* Magic Weather Example App - Files reference correction (#5397) via Alejandra Wetsch (@mawr92)
+* Fix a flaky test (#5401) via Antonio Pallares (@ajpallares)
+* Tuist: fix some setup issues (#5400) via Antonio Pallares (@ajpallares)
+* When taking screenshots for validation, ignore safe area. (#5376) via Chris Lindsay (@clindsay3)
+* Tuist: prevent MagicWeather Xcode projects names clashing (#5398) via Antonio Pallares (@ajpallares)
+* Tuist: fix compilation of RevenueCat and RevenueCatUI projects in visionOS (#5399) via Antonio Pallares (@ajpallares)
+* Add date to failure messages of entitlement verification in tests (#5396) via Antonio Pallares (@ajpallares)
+* Tuist: unify project settings (#5393) via Antonio Pallares (@ajpallares)
+* Potential fix for flaky test (#5395) via Antonio Pallares (@ajpallares)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5394) via RevenueCat Git Bot (@RCGitBot)
+* Store API key validation in memory (#5386) via Antonio Pallares (@ajpallares)
+* Increase simulated renewal time in some StoreKit integration tests (#5382) via Antonio Pallares (@ajpallares)
+* Add validation of Test Store API keys (#5385) via Antonio Pallares (@ajpallares)
+* Fix PurchaseTester compilation in tvOS (#5390) via Antonio Pallares (@ajpallares)
+* Add a mechanism to test the presentIfNeeded API in the Paywalls tester. (#5377) via Chris Lindsay (@clindsay3)
+
+## 5.33.0
+## RevenueCat SDK
+### 🐞 Bugfixes
+* Fix rendering of buttons in Mac Catalyst mode when optimized for Mac. (#5372) via Chris Lindsay (@clindsay3)
+* Update default height of paywalls when using .presentIfNeeded on Mac Catalyst to something that is more reasonable. (#5378) via Chris Lindsay (@clindsay3)
+### Customer Center
+#### ✨ New Features
+* Add custom change plans support for customer center (#5379) via Facundo Menzella (@facumenzella)
+
+### 🔄 Other Changes
+* Fix VirtualCurrencyBalancesScreen Preview on Catalyst (Optimized For Mac) (#5387) via Will Taylor (@fire-at-will)
+* Add `@_spi` to initializers of virtual currencies APIs (#5384) via Antonio Pallares (@ajpallares)
+* Use SwiftUI instead of UIKit to present an alert in Paywall Tester app (#5381) via Chris Lindsay (@clindsay3)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5380) via RevenueCat Git Bot (@RCGitBot)
+* Add build configurations for tuist workspace (#5364) via Facundo Menzella (@facumenzella)
+* Adding deep link for testing in Paywalls Tester (#5238) via Josh Holtz (@joshdholtz)
+* Wait a max of 20 minutes for TestFlight processing (#5153) via Josh Holtz (@joshdholtz)
+* [AUTOMATIC][Paywalls V2] Updates commit hash of paywall-preview-resources (#5373) via RevenueCat Git Bot (@RCGitBot)
+* Generate Mac Catalyst screenshots of Paywall components to be sent to EmergeTools (#5303) via Chris Lindsay (@clindsay3)
+* Use a more accurate method for generating a screenshot of a UIView (#5352) via Chris Lindsay (@clindsay3)
+* Upload screenshots to Emerge in addition to pushing them to the paywall validation repo. (#5351) via Chris Lindsay (@clindsay3)
+* Add a few additional VC integration tests (#5367) via Will Taylor (@fire-at-will)
+* [CI] Use m1 instead of m2 executor (#5369) via Mark Villacampa (@MarkVillacampa)
+
 ## 5.32.0
 ## RevenueCat SDK
 ### 🐞 Bugfixes

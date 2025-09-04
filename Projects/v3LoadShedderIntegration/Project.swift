@@ -19,6 +19,7 @@ let allDeploymentTargets: DeploymentTargets = .multiplatform(
 let project = Project(
     name: "v3LoadShedderIntegration",
     organizationName: .revenueCatOrgName,
+    settings: .appProject,
     targets: [
         // MARK: – Main Library
         .target(
@@ -86,6 +87,5 @@ let project = Project(
             profileAction: .profileAction(configuration: "Release"),
             analyzeAction: .analyzeAction(configuration: "Debug")
         )
-    ],
-    settings: .settings(base: [:].automaticCodeSigning(devTeam: .revenueCatTeamID))
+    ]
 )

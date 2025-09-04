@@ -50,23 +50,31 @@ struct FallbackNoSubscriptionsView: View {
 
     private let virtualCurrencies: RevenueCat.VirtualCurrencies?
 
+    private let purchasesProvider: CustomerCenterPurchasesType
+
     init(
         customerCenterViewModel: CustomerCenterViewModel,
         actionWrapper: CustomerCenterActionWrapper,
-        virtualCurrencies: RevenueCat.VirtualCurrencies?
+        virtualCurrencies: RevenueCat.VirtualCurrencies?,
+        purchasesProvider: CustomerCenterPurchasesType
     ) {
         self.customerCenterViewModel = customerCenterViewModel
         self.actionWrapper = actionWrapper
         self.virtualCurrencies = virtualCurrencies
+        self.purchasesProvider = purchasesProvider
     }
 
     var body: some View {
         ScrollViewWithOSBackground {
             LazyVStack(spacing: 0) {
-                NoSubscriptionsCardView(localization: localization)
-                    .cornerRadius(10)
-                    .padding(.horizontal)
-                    .padding(.bottom, 32)
+                NoSubscriptionsCardView(
+                    screenOffering: nil,
+                    screen: nil,
+                    localization: localization,
+                    purchasesProvider: purchasesProvider
+                )
+                .padding(.horizontal)
+                .padding(.bottom, 32)
 
                 if let virtualCurrencies, !virtualCurrencies.all.isEmpty {
                     VirtualCurrenciesScrollViewWithOSBackgroundSection(
@@ -133,14 +141,16 @@ struct NoSubscriptionsView_Previews: PreviewProvider {
         FallbackNoSubscriptionsView(
             customerCenterViewModel: CustomerCenterViewModel(uiPreviewPurchaseProvider: MockCustomerCenterPurchases()),
             actionWrapper: CustomerCenterActionWrapper(),
-            virtualCurrencies: nil
+            virtualCurrencies: nil,
+            purchasesProvider: MockCustomerCenterPurchases()
         )
         .previewDisplayName("No Subscriptions View")
 
         FallbackNoSubscriptionsView(
             customerCenterViewModel: CustomerCenterViewModel(uiPreviewPurchaseProvider: MockCustomerCenterPurchases()),
             actionWrapper: CustomerCenterActionWrapper(),
-            virtualCurrencies: VirtualCurrenciesFixtures.fourVirtualCurrencies
+            virtualCurrencies: VirtualCurrenciesFixtures.fourVirtualCurrencies,
+            purchasesProvider: MockCustomerCenterPurchases()
         )
         .environment(\.supportInformation, CustomerCenterConfigData.mock(displayVirtualCurrencies: true).support)
         .previewDisplayName("4 Virtual Currencies")
@@ -148,7 +158,8 @@ struct NoSubscriptionsView_Previews: PreviewProvider {
         FallbackNoSubscriptionsView(
             customerCenterViewModel: CustomerCenterViewModel(uiPreviewPurchaseProvider: MockCustomerCenterPurchases()),
             actionWrapper: CustomerCenterActionWrapper(),
-            virtualCurrencies: VirtualCurrenciesFixtures.fiveVirtualCurrencies
+            virtualCurrencies: VirtualCurrenciesFixtures.fiveVirtualCurrencies,
+            purchasesProvider: MockCustomerCenterPurchases()
         )
         .environment(\.supportInformation, CustomerCenterConfigData.mock(displayVirtualCurrencies: true).support)
         .previewDisplayName("5 Virtual Currencies")

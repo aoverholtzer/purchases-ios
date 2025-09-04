@@ -97,7 +97,8 @@ extension CustomerCenterConfigData {
                                     )),
                                     refundWindowDuration: nil
                                 )
-                            ]
+                            ],
+                            offering: nil
                         ),
                 .noActive: .init(
                     type: .noActive,
@@ -113,7 +114,8 @@ extension CustomerCenterConfigData {
                             detail: nil,
                             refundWindowDuration: nil
                         )
-                    ]
+                    ],
+                    offering: nil
                 )
             ],
             appearance: standardAppearance,
@@ -131,6 +133,7 @@ extension CustomerCenterConfigData {
                 displayVirtualCurrencies: displayVirtualCurrencies,
                 shouldWarnCustomersAboutMultipleSubscriptions: shouldWarnCustomersAboutMultipleSubscriptions
             ),
+            changePlans: [],
             lastPublishedAppVersion: lastPublishedAppVersion,
             productId: 1
         )

@@ -120,7 +120,7 @@ public struct CustomerCenterView: View {
             }
             .onAppear {
 #if DEBUG
-                guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
+                guard !ProcessInfo.isRunningForPreviews else { return }
 #endif
                 self.trackImpression()
             }
@@ -182,7 +182,7 @@ private extension CustomerCenterView {
 
     @ViewBuilder
     func destinationContent(configuration: CustomerCenterConfigData) -> some View {
-        if viewModel.hasPurchases,
+        if viewModel.hasAnyPurchases,
            let screen = configuration.screens[.management] {
             if let onUpdateAppClick = viewModel.onUpdateAppClick,
                !ignoreAppUpdateWarning
@@ -207,7 +207,8 @@ private extension CustomerCenterView {
                 FallbackNoSubscriptionsView(
                     customerCenterViewModel: viewModel,
                     actionWrapper: self.viewModel.actionWrapper,
-                    virtualCurrencies: self.viewModel.virtualCurrencies
+                    virtualCurrencies: self.viewModel.virtualCurrencies,
+                    purchasesProvider: self.viewModel.purchasesProvider
                 )
             }
         }
@@ -266,7 +267,7 @@ struct CustomerCenterView_Previews: PreviewProvider {
     static var previews: some View {
         CustomerCenterView(
             viewModel: CustomerCenterViewModel(
-                activeSubscriptionPurchases: [.monthlyRenewing],
+                activeSubscriptionPurchases: [.subscription],
                 activeNonSubscriptionPurchases: [],
                 configuration: CustomerCenterConfigData.default
             )
