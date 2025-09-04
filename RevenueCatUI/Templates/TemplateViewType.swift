@@ -190,10 +190,11 @@ private extension TemplateViewConfiguration {
         #if !os(watchOS)
         case .footer, .condensedFooter:
             if #available(iOS 26, *) {
-                UnevenRoundedRectangle(topLeadingRadius: Constants.defaultCornerRadius, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: Constants.defaultCornerRadius, style: .continuous)
+                ConcentricRectangle(corners: .concentric(minimum: .fixed(Constants.defaultCornerRadius)))
                     .fill(Color.clear)
                     .glassEffect(.regular,
-                                 in: UnevenRoundedRectangle(topLeadingRadius: Constants.defaultCornerRadius, bottomLeadingRadius: 0, bottomTrailingRadius: 0, topTrailingRadius: Constants.defaultCornerRadius, style: .continuous))
+                                 in: ConcentricRectangle(corners: .concentric(minimum: .fixed(Constants.defaultCornerRadius))))
+                    .padding(8)
                     .ignoresSafeArea()
             } else {
                 self.backgroundContent
