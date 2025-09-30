@@ -14,7 +14,7 @@
 import RevenueCat
 import SwiftUI
 
-#if !os(macOS) && !os(tvOS) // For Paywalls V2
+#if !os(tvOS) // For Paywalls V2
 
 typealias PresentedStackPartial = PaywallComponent.PartialStackComponent
 
@@ -180,7 +180,7 @@ struct StackComponentStyle {
         self.border = border?.border(uiConfigProvider: uiConfigProvider)
         self.shadow = shadow?.shadow(uiConfigProvider: uiConfigProvider)
         self.badge = badge?.badge(stackShape: self.shape,
-                                  stackBorder: self.border,
+                                  stackBorder: badge?.stack.border?.border(uiConfigProvider: uiConfigProvider),
                                   badgeViewModels: badgeViewModels,
                                   uiConfigProvider: uiConfigProvider)
 

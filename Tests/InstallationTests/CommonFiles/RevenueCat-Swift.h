@@ -491,6 +491,17 @@ SWIFT_AVAILABILITY(watchos,unavailable) SWIFT_AVAILABILITY(tvos,unavailable) SWI
 ///   </li>
 /// </ul>
 - (void)setCleverTapID:(NSString * _Nullable)cleverTapID;
+/// Subscriber attribute associated with the Airbridge Device ID for the user.
+/// Recommended for the RevenueCat Airbridge integration.
+/// <h4>Related Articles</h4>
+/// <ul>
+///   <li>
+///     <a href="https://docs.revenuecat.com/docs/airbridge">Airbridge RevenueCat Integration</a>
+///   </li>
+/// </ul>
+/// \param airbridgeDeviceID Empty String or <code>nil</code> will delete the subscriber attribute.
+///
+- (void)setAirbridgeDeviceID:(NSString * _Nullable)airbridgeDeviceID;
 /// Subscriber attribute associated with the Kochava Device ID for the user.
 /// Recommended for the RevenueCat Kochava integration.
 /// <h4>Related Articles</h4>
@@ -999,10 +1010,10 @@ SWIFT_CLASS_NAMED("CustomerInfo")
 
 
 
-
 @interface RCCustomerInfo (SWIFT_EXTENSION(RevenueCat))
 @property (nonatomic, readonly, copy) NSDictionary<NSString *, id> * _Nonnull rawData;
 @end
+
 
 @class RCStoreTransaction;
 
@@ -2973,6 +2984,7 @@ SWIFT_CLASS_PROPERTY(@property (nonatomic, class, readonly, copy) NSString * _No
 
 
 
+
 SWIFT_PROTOCOL("_TtP10RevenueCat29PurchasesOrchestratorDelegate_")
 @protocol PurchasesOrchestratorDelegate
 - (void)readyForPromotedProduct:(RCStoreProduct * _Nonnull)product purchase:(void (^ _Nonnull)(void (^ _Nonnull)(RCStoreTransaction * _Nullable, RCCustomerInfo * _Nullable, NSError * _Nullable, BOOL)))startPurchase;
@@ -3014,6 +3026,7 @@ SWIFT_CLASS_NAMED("PlatformInfo")
 @end
 
 
+
 SWIFT_AVAILABILITY(visionos,introduced=2.0) SWIFT_AVAILABILITY(watchos,introduced=11.0) SWIFT_AVAILABILITY(tvos,introduced=18.0) SWIFT_AVAILABILITY(macos,introduced=15.0) SWIFT_AVAILABILITY(ios,introduced=18.0)
 @interface RCPurchases (SWIFT_EXTENSION(RevenueCat))
 /// Returns the win-back offers that the subscriber is eligible for on the provided product.
@@ -3043,7 +3056,6 @@ SWIFT_AVAILABILITY(visionos,introduced=2.0) SWIFT_AVAILABILITY(watchos,introduce
 @property (nonatomic, readonly, strong) RCVirtualCurrencies * _Nullable cachedVirtualCurrencies;
 - (void)invalidateVirtualCurrenciesCache;
 @end
-
 
 
 
@@ -3187,6 +3199,7 @@ SWIFT_CLASS_PROPERTY(@property (nonatomic, class) BOOL debugLogsEnabled SWIFT_DE
 @end
 
 
+
 @interface RCPurchases (SWIFT_EXTENSION(RevenueCat))
 /// Parses a deep link URL to verify it’s a RevenueCat web purchase redemption link
 /// seealso:
@@ -3199,7 +3212,6 @@ SWIFT_CLASS_PROPERTY(@property (nonatomic, class) BOOL debugLogsEnabled SWIFT_DE
 - (void)offeringsWithCompletionHandler:(void (^ _Nonnull)(RCOfferings * _Nullable, NSError * _Nullable))completionHandler;
 @property (nonatomic, readonly, strong) RCOfferings * _Nullable cachedOfferings;
 @end
-
 
 
 
@@ -3585,12 +3597,12 @@ SWIFT_CLASS("_TtC10RevenueCat22PurchasesReceiptParser")
 @end
 
 
-
 @interface PurchasesReceiptParser (SWIFT_EXTENSION(RevenueCat))
 /// A default instance of <code>PurchasesReceiptParser</code>
 SWIFT_CLASS_PROPERTY(@property (nonatomic, class, readonly, strong, getter=default) PurchasesReceiptParser * _Nonnull default_;)
 + (PurchasesReceiptParser * _Nonnull)default SWIFT_WARN_UNUSED_RESULT;
 @end
+
 
 
 
@@ -3962,13 +3974,13 @@ typedef SWIFT_ENUM_NAMED(NSInteger, RCDiscountType, "DiscountType", open) {
 
 
 
-
 @interface RCStoreProductDiscount (SWIFT_EXTENSION(RevenueCat))
 /// The discount price of the product in the local currency.
 /// note:
 /// this is meant for  Objective-C. For Swift, use <code>price</code> instead.
 @property (nonatomic, readonly, strong) NSDecimalNumber * _Nonnull price;
 @end
+
 
 
 
@@ -4169,11 +4181,11 @@ typedef SWIFT_ENUM_NAMED(NSInteger, RCSubscriptionPeriodUnit, "Unit", open) {
 
 
 
+
 @interface RCSubscriptionPeriod (SWIFT_EXTENSION(RevenueCat))
 /// The number of units per subscription period
 @property (nonatomic, readonly) NSInteger numberOfUnits SWIFT_AVAILABILITY(macos,unavailable,message="'numberOfUnits' has been renamed to 'value'") SWIFT_AVAILABILITY(watchos,unavailable,message="'numberOfUnits' has been renamed to 'value'") SWIFT_AVAILABILITY(tvos,unavailable,message="'numberOfUnits' has been renamed to 'value'") SWIFT_AVAILABILITY(ios,unavailable,message="'numberOfUnits' has been renamed to 'value'");
 @end
-
 
 
 @interface RCSubscriptionPeriod (SWIFT_EXTENSION(RevenueCat))
@@ -4290,7 +4302,6 @@ SWIFT_CLASS_NAMED("VirtualCurrencies")
 
 
 
-
 /// A class representing information about a virtual currency in the app.
 /// Use this class to access information about a virtual currency, such as its current balance.
 /// warning:
@@ -4311,6 +4322,7 @@ SWIFT_CLASS_NAMED("VirtualCurrency")
 
 
 
+
 @interface RCVirtualCurrency (SWIFT_EXTENSION(RevenueCat))
 /// Compares this virtual currency with another one.
 /// \param object The other object to compare with
@@ -4320,8 +4332,6 @@ SWIFT_CLASS_NAMED("VirtualCurrency")
 /// <code>true</code> if both objects are virtual currencies with the same balance, <code>false</code> otherwise
 - (BOOL)isEqual:(id _Nullable)object SWIFT_WARN_UNUSED_RESULT;
 @end
-
-
 
 
 /// Class representing a web redemption deep link that can be redeemed by the SDK.

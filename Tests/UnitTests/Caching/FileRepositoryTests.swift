@@ -11,6 +11,7 @@
 //
 //  Created by Jacob Zivan Rakidzich on 8/13/25.
 
+import Nimble
 @_spi(Internal) @testable import RevenueCat
 import XCTest
 
@@ -41,7 +42,7 @@ class FileRepositoryTests: TestCase {
 
         await yield()
 
-        XCTAssertEqual(sut.networkService.invocations.count, 1)
+        await expect(sut.networkService.invocations.count).toEventually(equal(1))
     }
 
     func test_whenCacheURLCannotBeAssembled_returnsNil() async throws {
@@ -85,7 +86,7 @@ class FileRepositoryTests: TestCase {
         sut.networkService.stubResponse(at: 0, result: .success(data))
         let result = try await sut.fileRepository.generateOrGetCachedFileURL(for: someURL)
 
-        let expectedCachedURL = URL(string: "data:sample/someurl").unsafelyUnwrapped
+        let expectedCachedURL = URL(string: "data:sample/RevenueCat/e8a0d6b245a127f56629765a9815ba2c").unsafelyUnwrapped
 
         XCTAssertEqual(sut.networkService.invocations, [someURL])
         XCTAssertEqual(sut.cache.saveDataInvocations, [.init(data: data, url: expectedCachedURL)])

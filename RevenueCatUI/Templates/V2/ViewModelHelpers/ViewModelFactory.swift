@@ -15,7 +15,7 @@
 import Foundation
 import RevenueCat
 
-#if !os(macOS) && !os(tvOS) // For Paywalls V2
+#if !os(tvOS) // For Paywalls V2
 
 class PurchaseButtonCollector {
 
@@ -404,6 +404,14 @@ struct ViewModelFactory {
                     pageStackViewModels: pageStackViewModels
                 )
             )
+        case .video(let component):
+            return .video(
+                try VideoComponentViewModel(
+                    localizationProvider: localizationProvider,
+                    uiConfigProvider: uiConfigProvider,
+                    component: component
+                )
+            )
         }
     }
 
@@ -518,6 +526,8 @@ struct ViewModelFactory {
                 return nil
             }
             return self.findFullWidthImageViewIfItsTheFirst(first)
+        case .video:
+            return nil
         }
     }
 

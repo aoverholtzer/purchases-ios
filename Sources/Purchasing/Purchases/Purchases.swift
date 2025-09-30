@@ -1414,7 +1414,7 @@ public extension Purchases {
         return CustomerCenterConfigData(from: response)
     }
 
-#if !os(macOS) && !os(tvOS)
+#if !os(tvOS)
 
     /// Used by `RevenueCatUI` to notify `RevenueCat` when a font in a paywall fails to load.
     @_spi(Internal) func failedToLoadFontWithConfig(_ fontConfig: UIConfig.FontsConfig) {
@@ -1429,6 +1429,31 @@ public extension Purchases {
     @available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *)
     static let paywallImageDownloadSession: URLSession = PaywallCacheWarming.downloadSession
 
+}
+
+// MARK: - Preferred locale
+
+extension Purchases {
+    /// Overrides the preferred locale for RevenueCatUI components.
+    /// - Parameter locale: A locale string in the format "language_region" (e.g., "en_US").
+    /// Use `nil` to remove the override and use the default user locale determined by the system.
+    ///
+    /// Setting this will affect the display of RevenueCat UI components, such as the Paywalls.
+    /// - Important: This method only takes effect after `Purchases` has been configured.
+    public func overridePreferredUILocale(_ locale: String?) {
+        guard locale != self.systemInfo.preferredLocaleOverride else {
+            return
+        }
+
+        self.systemInfo.overridePreferredLocale(locale)
+
+        if self.overridePreferredUILocaleRateLimiter.shouldProceed() {
+            // Refetches new offerings with preferred locale
+            self.getOfferings(fetchPolicy: .default, fetchCurrent: true) { _, _ in
+                // No-op
+            }
+        }
+    }
 }
 
 // MARK: Configuring Purchases
@@ -1929,22 +1954,6 @@ extension Purchases {
         return self.systemInfo.preferredLocaleOverride
     }
 
-    // swiftlint:disable missing_docs
-    @_spi(Internal) public func overridePreferredLocale(_ locale: String?) {
-        guard locale != self.systemInfo.preferredLocaleOverride else {
-            return
-        }
-
-        self.systemInfo.overridePreferredLocale(locale)
-
-        if self.overridePreferredUILocaleRateLimiter.shouldProceed() {
-            // Refetches new offerings with preferred locale
-            self.getOfferings(fetchPolicy: .default, fetchCurrent: true) { _, _ in
-                // No-op
-            }
-        }
-    }
-
 }
 
 extension Purchases: InternalPurchasesType {
@@ -2265,6 +2274,9 @@ private extension Purchases {
                         }
                         group.addTask {
                             await cache.warmUpPaywallImagesCache(offerings: offerings)
+                        }
+                        group.addTask {
+                            await cache.warmUpPaywallVideosCache(offerings: offerings)
                         }
 						group.addTask {
                             await cache.warmUpPaywallFontsCache(offerings: offerings)
