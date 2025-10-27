@@ -14,6 +14,7 @@
 
 import Foundation
 
+// swiftlint:disable file_length
 protocol PaywallCacheWarmingType: Sendable {
 
     @available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *)
@@ -99,7 +100,7 @@ actor PaywallCacheWarming: PaywallCacheWarmingType {
 
         for url in imageURLs {
             // Preferred method - load with FileRepository
-            _ = try? await fileRepository.generateOrGetCachedFileURL(for: url)
+            _ = try? await fileRepository.generateOrGetCachedFileURL(for: url, withChecksum: nil)
 
             // Legacy method - load with URLSession
             do {
@@ -114,14 +115,17 @@ actor PaywallCacheWarming: PaywallCacheWarmingType {
         guard !self.hasLoadedVideos else { return }
         self.hasLoadedVideos = true
 
-        let videoURLs = offerings.allVideosInPaywalls
+        let videoURLs = offerings.allLowResVideosInPaywalls
         guard !videoURLs.isEmpty else { return }
 
         Logger.verbose(Strings.paywalls.warming_up_videos(videoURLs: videoURLs))
         await withTaskGroup(of: URL?.self) { [weak self] group in
-            for url in videoURLs {
+            for source in videoURLs {
                 group.addTask { [weak self] in
-                    try? await self?.fileRepository.generateOrGetCachedFileURL(for: url)
+                    try? await self?.fileRepository.generateOrGetCachedFileURL(
+                        for: source.url,
+                        withChecksum: source.checksum
+                    )
                 }
             }
         }
@@ -254,14 +258,14 @@ private extension Offerings {
         )
     }
 
-    var allVideosInPaywalls: Set<URL> {
+    var allLowResVideosInPaywalls: Set<URLWithValidation> {
         return .init(
             self
                 .all
                 .values
                 .lazy
                 .compactMap(\.paywallComponents)
-                .flatMap(\.data.allVideoURLs)
+                .flatMap(\.data.allLowResVideoUrls)
         )
     }
 
