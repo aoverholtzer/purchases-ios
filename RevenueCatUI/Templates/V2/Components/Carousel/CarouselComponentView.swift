@@ -36,6 +36,9 @@ struct CarouselComponentView: View {
     @Environment(\.screenCondition)
     private var screenCondition
 
+    @Environment(\.colorScheme)
+    private var colorScheme
+
     let viewModel: CarouselComponentViewModel
     let onDismiss: () -> Void
 
@@ -50,7 +53,8 @@ struct CarouselComponentView: View {
             ),
             isEligibleForPromoOffer: self.paywallPromoOfferCache.isMostLikelyEligible(
                 for: self.packageContext.package
-            )
+            ),
+            colorScheme: colorScheme
         ) { style in
             if style.visible {
                 GeometryReader { reader in
@@ -210,10 +214,18 @@ private struct CarouselView<Content: View>: View {
                 )
             }
 
-            // Main horizontal “strip” of pages:
+            // Main horizontal "strip" of pages:
             HStack(alignment: self.pageAlignment, spacing: spacing) {
-                ForEach(data) { item in
+                ForEach(Array(data.enumerated()), id: \.element.id) { pageIndex, item in
                     item.view
+                        .environment(
+                            \.carouselState,
+                            CarouselState(
+                                activeIndex: index,
+                                pageIndex: pageIndex,
+                                originalCount: originalCount
+                            )
+                        )
                         .frame(width: cardWidth)
                 }
             }
@@ -637,7 +649,8 @@ struct CarouselComponentView_Previews: PreviewProvider {
                     localizationProvider: .init(
                         locale: Locale.current,
                         localizedStrings: [:]
-                    )
+                    ),
+                    colorScheme: .light
                 ),
                 onDismiss: {}
             )
@@ -714,7 +727,8 @@ struct CarouselComponentView_Previews: PreviewProvider {
                     localizationProvider: .init(
                         locale: Locale.current,
                         localizedStrings: [:]
-                    )
+                    ),
+                    colorScheme: .light
                 ),
                 onDismiss: {}
             )
@@ -785,7 +799,8 @@ struct CarouselComponentView_Previews: PreviewProvider {
                     localizationProvider: .init(
                         locale: Locale.current,
                         localizedStrings: [:]
-                    )
+                    ),
+                    colorScheme: .light
                 ),
                 onDismiss: {}
             )
@@ -803,16 +818,18 @@ extension CarouselComponentViewModel {
 
     convenience init(
         component: PaywallComponent.CarouselComponent,
-        localizationProvider: LocalizationProvider
+        localizationProvider: LocalizationProvider,
+        colorScheme: ColorScheme
     ) throws {
         let viewModels: [StackComponentViewModel] = try component.pages.map { component in
             return try .init(
                 component: component,
-                localizationProvider: localizationProvider
+                localizationProvider: localizationProvider,
+                colorScheme: colorScheme
             )
         }
 
-        try self.init(
+        self.init(
             localizationProvider: localizationProvider,
             uiConfigProvider: .init(uiConfig: PreviewUIConfig.make()),
             component: component,
