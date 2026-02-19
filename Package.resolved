@@ -28,33 +28,6 @@
       }
     },
     {
-      "identity" : "ohhttpstubs",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/AliSoftware/OHHTTPStubs.git",
-      "state" : {
-        "revision" : "12f19662426d0434d6c330c6974d53e2eb10ecd9",
-        "version" : "9.1.0"
-      }
-    },
-    {
-      "identity" : "simpledebugger",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/EmergeTools/SimpleDebugger.git",
-      "state" : {
-        "revision" : "f065263eb5db95874b690408d136b573c939db9e",
-        "version" : "1.0.0"
-      }
-    },
-    {
-      "identity" : "snapshotpreviews",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/EmergeTools/SnapshotPreviews.git",
-      "state" : {
-        "revision" : "6dfb281493e48e7c09ae9717593ae0b8eb47b15c",
-        "version" : "0.11.0"
-      }
-    },
-    {
       "identity" : "swift-snapshot-testing",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/pointfreeco/swift-snapshot-testing",
