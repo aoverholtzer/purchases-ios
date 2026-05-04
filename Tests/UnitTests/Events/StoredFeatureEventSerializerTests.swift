@@ -13,7 +13,7 @@
 
 import Foundation
 import Nimble
-@testable import RevenueCat
+@_spi(Internal) @testable import RevenueCat
 import XCTest
 
 @available(iOS 15.0, tvOS 15.0, macOS 12.0, watchOS 8.0, *)
@@ -58,7 +58,8 @@ class StoredFeatureEventSerializerTests: TestCase {
             sessionID: .init(uuidString: "73616D70-6C65-2073-7472-696E67000000")!,
             displayMode: .fullScreen,
             localeIdentifier: "en_US",
-            darkMode: true
+            darkMode: true,
+            source: nil
         )
         let paywallEvent = PaywallEvent.impression(paywallEventCreationData, paywallEventData)
 

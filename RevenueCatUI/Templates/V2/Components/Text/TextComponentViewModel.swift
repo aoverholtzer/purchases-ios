@@ -11,7 +11,7 @@
 //
 //  Created by Josh Holtz on 6/11/24.
 
-import RevenueCat
+@_spi(Internal) import RevenueCat
 import SwiftUI
 
 #if canImport(UIKit)
@@ -33,7 +33,8 @@ class TextComponentViewModel {
     init(
         localizationProvider: LocalizationProvider,
         uiConfigProvider: UIConfigProvider,
-        component: PaywallComponent.TextComponent
+        component: PaywallComponent.TextComponent,
+        discardRules: Bool = false
     ) throws {
         self.localizationProvider = localizationProvider
         self.uiConfigProvider = uiConfigProvider
@@ -43,7 +44,7 @@ class TextComponentViewModel {
             return ""
         }()
 
-        self.presentedOverrides = try self.component.overrides?.toPresentedOverrides {
+        self.presentedOverrides = try self.component.overrides?.toPresentedOverrides(discardRules: discardRules) {
             try LocalizedTextPartial.create(from: $0, using: localizationProvider.localizedStrings)
         }
 
@@ -55,6 +56,7 @@ class TextComponentViewModel {
     func styles(
         state: ComponentViewState,
         condition: ScreenCondition,
+        selectedPackageId: String?,
         packageContext: PackageContext,
         isEligibleForIntroOffer: Bool,
         promoOffer: PromotionalOffer?,
@@ -63,11 +65,16 @@ class TextComponentViewModel {
         @ViewBuilder apply: @escaping (TextComponentStyle) -> some View
     ) -> some View {
         let isEligibleForPromoOffer = promoOffer != nil
+        let conditionContext = uiConfigProvider.conditionContext(
+            selectedPackageId: selectedPackageId,
+            customVariables: customVariables
+        )
         let localizedPartial = LocalizedTextPartial.buildPartial(
             state: state,
             condition: condition,
             isEligibleForIntroOffer: isEligibleForIntroOffer,
             isEligibleForPromoOffer: isEligibleForPromoOffer,
+            conditionContext: conditionContext,
             with: self.presentedOverrides
         )
         let partial = localizedPartial?.partial
@@ -88,6 +95,7 @@ class TextComponentViewModel {
         let style = TextComponentStyle(
             uiConfigProvider: self.uiConfigProvider,
             visible: partial?.visible ?? self.component.visible ?? true,
+            name: partial?.name ?? self.component.name,
             text: Self.processText(text, config: config),
             fontName: partial?.fontName ?? self.component.fontName,
             fontWeight: partial?.fontWeightResolved ?? self.component.fontWeightResolved,
@@ -206,6 +214,7 @@ struct LocalizedTextPartial: PresentedPartial {
             text: other?.text ?? base?.text,
             partial: PaywallComponent.PartialTextComponent(
                 visible: otherPartial?.visible ?? basePartial?.visible,
+                name: otherPartial?.name ?? basePartial?.name,
                 text: otherPartial?.text ?? basePartial?.text,
                 fontName: otherPartial?.fontName ?? basePartial?.fontName,
                 fontWeight: otherPartial?.fontWeightResolved ?? basePartial?.fontWeightResolved,
@@ -242,6 +251,7 @@ extension LocalizedTextPartial {
 struct TextComponentStyle {
 
     let visible: Bool
+    let name: String?
     let text: String
     let fontWeight: Font.Weight
     let color: DisplayableColorScheme
@@ -256,6 +266,7 @@ struct TextComponentStyle {
     init(
         uiConfigProvider: UIConfigProvider,
         visible: Bool,
+        name: String?,
         text: String,
         fontName: String?,
         fontWeight: PaywallComponent.FontWeight,
@@ -268,6 +279,7 @@ struct TextComponentStyle {
         horizontalAlignment: PaywallComponent.HorizontalAlignment
     ) {
         self.visible = visible
+        self.name = name
         self.text = text
         self.fontWeight = fontWeight.fontWeight
         self.color = color.asDisplayable(uiConfigProvider: uiConfigProvider)

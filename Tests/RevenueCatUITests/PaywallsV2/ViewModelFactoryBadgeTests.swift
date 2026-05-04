@@ -12,7 +12,7 @@
 //  Created by Facundo Menzella on 2/16/26.
 
 import Nimble
-import RevenueCat
+@_spi(Internal) import RevenueCat
 @testable import RevenueCatUI
 import XCTest
 
@@ -224,7 +224,6 @@ class ViewModelFactoryBadgeTests: TestCase {
         return try factory.toStackViewModel(
             component: component,
             packageValidator: factory.packageValidator,
-            firstItemIgnoresSafeAreaInfo: nil,
             purchaseButtonCollector: nil,
             localizationProvider: LocalizationProvider(
                 locale: .current,

@@ -101,6 +101,10 @@ The SDK is heavily concurrent — StoreKit callbacks, delegate calls, caching, a
 
 When modifying internal state, use these primitives. Don't introduce bare property access to shared mutable state without synchronization.
 
+### Logging
+
+When logging to the debug console, follow the pattern with the strings in RevenueCatUI/Data/Strings.swift
+
 ### API Annotations
 - **`@_spi(Internal)`** — APIs that are public only to be accessible by other modules or hybrid SDKs, not intended for external developer use
 - **`@available`** — platform availability annotations for StoreKit 2 and other iOS version-specific features
@@ -135,6 +139,24 @@ For environment setup, see **`Contributing/CONTRIBUTING.md`**. For code style, s
 
 The project uses **Tuist** for managing the Xcode workspace. See **`Contributing/DEVELOPMENT.md`** for full Tuist commands, environment variables, and troubleshooting.
 
+**Tuist environment variables** (prefix all with `TUIST_` when passing to `tuist generate`):
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `TUIST_RC_REMOTE=true` | Use remote instead of local RevenueCat dependency | local |
+| `TUIST_RC_XCODE_PROJECT=true` | Use Xcode project instead of Swift Package dependency | SPM |
+| `TUIST_INCLUDE_TEST_DEPENDENCIES=false` | Skip test/dev dependencies (Nimble, OHHTTPStubs, etc.) to speed up `tuist install` | `true` |
+| `TUIST_INCLUDE_XCFRAMEWORK_INSTALLATION_TESTS=true` | Include XCFrameworkInstallationTests project | `false` |
+| `TUIST_SK_CONFIG_PATH=/path/to/file.storekit` | Custom StoreKit config for PaywallsTester scheme | — |
+| `TUIST_RC_API_KEY=appl_xxxxx` | RevenueCat API key written to `Local.xcconfig` at generation time | — |
+| `TUIST_LAUNCH_ARGUMENTS="-Flag1 -Flag2"` | Space-separated launch arguments injected into PaywallsTester scheme run action (enabled by default) | — |
+| `TUIST_SWIFT_CONDITIONS="FLAG1 FLAG2"` | Space-separated Swift compilation conditions injected into all targets | — |
+
+Example combining multiple variables:
+```bash
+TUIST_RC_API_KEY=appl_xxxxx TUIST_LAUNCH_ARGUMENTS="-EnableWorkflowsEndpoint" tuist generate PaywallsTester
+```
+
 ### Target Specifications
 - **Minimum Deployment**: iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.2, visionOS 1.0
 - **Swift**: 5.9+
@@ -167,7 +189,7 @@ When creating a pull request, **always add one of these labels** to categorize t
 
 **Additional scope labels** (add alongside the primary label above):
 - `pr:RevenueCatUI` — Changes specific to the RevenueCatUI module (paywalls, customer center)
-- `feat:Paywalls_V2` — Changes related to Paywalls V2 (requires `pr:RevenueCatUI` as well)
+- `feat:PaywallsV2` — Changes related to Paywalls V2 (requires `pr:RevenueCatUI` as well)
 - `feat:Customer Center` — Changes related to Customer Center (requires `pr:RevenueCatUI` as well)
 
 ## Code Review Guidelines
@@ -197,3 +219,5 @@ When reviewing a pull request:
 - **Run SwiftLint** before committing (`swiftlint` or `swiftlint --fix`)
 - **Follow the style guide** in `Contributing/SwiftStyleGuide.swift`
 - **Check Android SDK** when unsure about cross-platform implementation details — new features should follow existing patterns across SDKs
+- **Never commit Claude-related files** — do not stage or commit `.claude/` directory, `settings.local.json`, or any AI tool configuration files
+- **Never commit API keys or secrets** — do not stage or commit API keys, tokens, credentials, or any sensitive data

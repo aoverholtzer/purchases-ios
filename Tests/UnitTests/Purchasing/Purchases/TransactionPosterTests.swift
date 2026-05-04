@@ -14,7 +14,7 @@
 import Nimble
 import XCTest
 
-@testable import RevenueCat
+@_spi(Internal) @testable import RevenueCat
 
 class TransactionPosterTests: TestCase {
 
@@ -723,7 +723,8 @@ class TransactionPosterTests: TestCase {
             sessionID: UUID(),
             displayMode: .fullScreen,
             localeIdentifier: "en_US",
-            darkMode: false
+            darkMode: false,
+            source: nil
         )
         let paywallEvent = PaywallEvent.impression(paywallEventCreationData, paywallEventData)
         let transactionData = PurchasedTransactionData(presentedPaywall: paywallEvent)
