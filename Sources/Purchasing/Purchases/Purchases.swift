@@ -281,6 +281,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
     private let notificationCenter: NotificationCenter
     private let offeringsFactory: OfferingsFactory
     private let offeringsManager: OfferingsManager
+    private let workflowManager: WorkflowManager
     private let offlineEntitlementsManager: OfflineEntitlementsManager
     private let productsManager: ProductsManagerType
     private let customerInfoManager: CustomerInfoManager
@@ -316,6 +317,15 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
     private let diagnosticsTracker: DiagnosticsTrackerType?
     private let virtualCurrencyManager: VirtualCurrencyManagerType
 
+    /// The ``Configuration`` used to configure this instance, if it was created via
+    /// ``Purchases/configure(with:)-3wmd0`` (or one of its overloads). Used by
+    /// ``Purchases/setDefaultInstance(_:dedupingAgainst:)`` to deduplicate subsequent
+    /// `configure` calls that pass an equal ``Configuration``.
+    ///
+    /// `nil` when the instance is created via test paths that build `Purchases` directly with
+    /// mocks instead of going through a ``Configuration``; those paths opt out of deduplication.
+    internal let currentConfiguration: Configuration?
+
     @_spi(Internal) public let subscriptionHistoryTracker = SubscriptionHistoryTracker()
 
     // swiftlint:disable:next function_body_length cyclomatic_complexity
@@ -333,7 +343,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                      showStoreMessagesAutomatically: Bool,
                      diagnosticsEnabled: Bool = false,
                      preferredLocale: String?,
-                     automaticDeviceIdentifierCollectionEnabled: Bool = true
+                     automaticDeviceIdentifierCollectionEnabled: Bool = true,
+                     currentConfiguration: Configuration?
     ) {
         if userDefaults != nil {
             Logger.debug(Strings.configure.using_custom_user_defaults)
@@ -366,6 +377,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         let attributionFetcher = AttributionFetcher(attributionFactory: attributionTypeFactory, systemInfo: systemInfo)
         let userDefaults = userDefaults ?? UserDefaults.computeDefault()
         let deviceCache = DeviceCache(systemInfo: systemInfo, userDefaults: userDefaults)
+        let workflowsCache = WorkflowsCache(deviceCache: deviceCache)
 
         let diagnosticsFileHandler: DiagnosticsFileHandlerType? = {
             guard diagnosticsEnabled,
@@ -388,7 +400,9 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         let purchasedProductsFetcher = OfflineCustomerInfoCreator.createPurchasedProductsFetcherIfAvailable(
             diagnosticsTracker: diagnosticsTracker
         )
-        let transactionFetcher = StoreKit2TransactionFetcher(diagnosticsTracker: diagnosticsTracker)
+        let transactionFetcher: StoreKit2TransactionFetcherType = systemInfo.isSimulatedStoreAPIKey
+            ? SimulatedStoreTransactionFetcher()
+            : StoreKit2TransactionFetcher(diagnosticsTracker: diagnosticsTracker)
 
         let backend = Backend(
             systemInfo: systemInfo,
@@ -417,7 +431,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
 
         let simulatedStorePurchaseHandler = SimulatedStorePurchaseHandler(systemInfo: systemInfo)
 
-        let offeringsFactory = OfferingsFactory()
+        let offeringsFactory = OfferingsFactory(systemInfo: systemInfo)
         let receiptParser = PurchasesReceiptParser.default
         let transactionsManager = TransactionsManager(receiptParser: receiptParser)
 
@@ -483,6 +497,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                                               backend: backend,
                                               customerInfoManager: customerInfoManager,
                                               attributeSyncing: subscriberAttributesManager,
+                                              workflowsCache: systemInfo.workflowsEndpointEnabled
+                                              ? workflowsCache : nil,
                                               appUserID: appUserID
         )
 
@@ -517,13 +533,42 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                                                attributionPoster: attributionPoster,
                                                systemInfo: systemInfo)
         let introCalculator = IntroEligibilityCalculator(productsManager: productsManager, receiptParser: receiptParser)
+
+        let trialOrIntroPriceChecker = CachingTrialOrIntroPriceEligibilityChecker.create(
+            with: TrialOrIntroPriceEligibilityChecker(systemInfo: systemInfo,
+                                                      receiptFetcher: receiptFetcher,
+                                                      introEligibilityCalculator: introCalculator,
+                                                      backend: backend,
+                                                      currentUserProvider: identityManager,
+                                                      operationDispatcher: operationDispatcher,
+                                                      productsManager: productsManager,
+                                                      diagnosticsTracker: diagnosticsTracker)
+        )
+
+        let paywallCache: PaywallCacheWarmingType?
+
+        if #available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *) {
+            paywallCache = PaywallCacheWarming(
+                introEligibiltyChecker: trialOrIntroPriceChecker
+            )
+        } else {
+            paywallCache = nil
+        }
+
+        let workflowManager = WorkflowManager(backend: backend,
+                                              workflowsCache: workflowsCache,
+                                              paywallCache: paywallCache,
+                                              operationDispatcher: operationDispatcher)
+
         let offeringsManager = OfferingsManager(deviceCache: deviceCache,
                                                 operationDispatcher: operationDispatcher,
                                                 systemInfo: systemInfo,
                                                 backend: backend,
                                                 offeringsFactory: offeringsFactory,
                                                 productsManager: productsManager,
-                                                diagnosticsTracker: diagnosticsTracker)
+                                                diagnosticsTracker: diagnosticsTracker,
+                                                workflowManager: systemInfo.workflowsEndpointEnabled
+                                                ? workflowManager : nil)
         let manageSubsHelper = ManageSubscriptionsHelper(systemInfo: systemInfo,
                                                          customerInfoManager: customerInfoManager,
                                                          currentUserProvider: identityManager)
@@ -643,27 +688,6 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
             }
         }()
 
-        let trialOrIntroPriceChecker = CachingTrialOrIntroPriceEligibilityChecker.create(
-            with: TrialOrIntroPriceEligibilityChecker(systemInfo: systemInfo,
-                                                      receiptFetcher: receiptFetcher,
-                                                      introEligibilityCalculator: introCalculator,
-                                                      backend: backend,
-                                                      currentUserProvider: identityManager,
-                                                      operationDispatcher: operationDispatcher,
-                                                      productsManager: productsManager,
-                                                      diagnosticsTracker: diagnosticsTracker)
-        )
-
-        let paywallCache: PaywallCacheWarmingType?
-
-        if #available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *) {
-            paywallCache = PaywallCacheWarming(
-                introEligibiltyChecker: trialOrIntroPriceChecker
-            )
-        } else {
-            paywallCache = nil
-        }
-
         let virtualCurrencyManager = VirtualCurrencyManager(
             identityManager: identityManager,
             deviceCache: deviceCache,
@@ -700,6 +724,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                   eventsManager: eventsManager,
                   productsManager: productsManager,
                   offeringsManager: offeringsManager,
+                  workflowManager: workflowManager,
                   offlineEntitlementsManager: offlineEntitlementsManager,
                   purchasesOrchestrator: purchasesOrchestrator,
                   purchasedProductsFetcher: purchasedProductsFetcher,
@@ -708,7 +733,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
                   diagnosticsTracker: diagnosticsTracker,
                   virtualCurrencyManager: virtualCurrencyManager,
                   healthManager: healthManager,
-                  transactionMetadataSyncHelper: transactionMetadataSyncHelper
+                  transactionMetadataSyncHelper: transactionMetadataSyncHelper,
+                  currentConfiguration: currentConfiguration
         )
     }
 
@@ -733,6 +759,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
          eventsManager: EventsManagerType?,
          productsManager: ProductsManagerType,
          offeringsManager: OfferingsManager,
+         workflowManager: WorkflowManager,
          offlineEntitlementsManager: OfflineEntitlementsManager,
          purchasesOrchestrator: PurchasesOrchestrator,
          purchasedProductsFetcher: PurchasedProductsFetcherType?,
@@ -741,7 +768,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
          diagnosticsTracker: DiagnosticsTrackerType?,
          virtualCurrencyManager: VirtualCurrencyManagerType,
          healthManager: SDKHealthManager,
-         transactionMetadataSyncHelper: TransactionMetadataSyncHelper
+         transactionMetadataSyncHelper: TransactionMetadataSyncHelper,
+         currentConfiguration: Configuration?
     ) {
 
         if systemInfo.dangerousSettings.customEntitlementComputation {
@@ -760,7 +788,8 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         Logger.debug(Strings.configure.sdk_version(Self.frameworkVersion))
         Logger.debug(Strings.configure.bundle_id(SystemInfo.bundleIdentifier))
         Logger.debug(Strings.configure.system_version(SystemInfo.systemVersion))
-        Logger.debug(Strings.configure.is_simulator(SystemInfo.isRunningInSimulator))
+        Logger.debug(Strings.configure.is_simulator(SystemInfo.isRunningInSimulator,
+                                                    apiKeyValidationResult: systemInfo.apiKeyValidationResult))
         Logger.user(Strings.configure.initial_app_user_id(isSet: appUserID != nil))
         Logger.debug(Strings.configure.response_verification_mode(systemInfo.responseVerificationMode))
         Logger.debug(Strings.configure.storekit_version(systemInfo.storeKitVersion))
@@ -784,6 +813,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         self.eventsManager = eventsManager
         self.productsManager = productsManager
         self.offeringsManager = offeringsManager
+        self.workflowManager = workflowManager
         self.offlineEntitlementsManager = offlineEntitlementsManager
         self.purchasesOrchestrator = purchasesOrchestrator
         self.purchasedProductsFetcher = purchasedProductsFetcher
@@ -793,6 +823,7 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
         self.virtualCurrencyManager = virtualCurrencyManager
         self.healthManager = healthManager
         self.transactionMetadataSyncHelper = transactionMetadataSyncHelper
+        self.currentConfiguration = currentConfiguration
 
         super.init()
 
@@ -865,10 +896,25 @@ public typealias StartPurchaseBlock = (@escaping PurchaseCompletedBlock) -> Void
     }
 
     /// - Parameter purchases: this is an `@autoclosure` to be able to clear the previous instance
-    /// from memory before creating the new one.
+    /// from memory before creating the new one. It is also not evaluated when ``dedupingAgainst``
+    /// matches the current instance's configuration, avoiding an unnecessary allocation.
+    /// - Parameter configuration: when non-`nil`, and the current instance was configured with an
+    /// equal ``Configuration``, the existing instance is returned and ``purchases`` is not invoked.
+    /// Test paths that install a pre-built `Purchases` directly leave this `nil` and the historical
+    /// "replace and warn" behavior is preserved.
     @discardableResult
-    static func setDefaultInstance(_ purchases: @autoclosure () -> Purchases) -> Purchases {
+    static func setDefaultInstance(
+        _ purchases: @autoclosure () -> Purchases,
+        dedupingAgainst configuration: Configuration? = nil
+    ) -> Purchases {
         return self.purchases.modify { currentInstance in
+            if let configuration,
+               let existingInstance = currentInstance,
+               existingInstance.currentConfiguration == configuration {
+                Logger.info(Strings.configure.instance_already_exists_with_same_config)
+                return existingInstance
+            }
+
             if currentInstance != nil {
                 #if DEBUG
                 if ProcessInfo.isRunningRevenueCatTests {
@@ -929,7 +975,11 @@ public extension Purchases {
     ) {
         self.offeringsManager.offerings(appUserID: self.appUserID,
                                         fetchPolicy: fetchPolicy,
-                                        fetchCurrent: fetchCurrent) { @Sendable result in
+                                        fetchCurrent: fetchCurrent) { [weak self] result in
+            if #available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *),
+               let offerings = result.value {
+                self?.warmUpCaches(offerings: offerings)
+            }
             completion(result.value, result.error?.asPublicError)
         }
     }
@@ -943,16 +993,28 @@ public extension Purchases {
     }
 
     @_spi(Internal)
-    // The backend uses the offering identifier as the workflow lookup key.
     func workflow(forOfferingIdentifier offeringID: String) async throws -> WorkflowDataResult {
+        // Prefer the workflowId resolved from the workflows list (offeringId → workflowId), falling
+        // back to the offering identifier itself, which the backend also accepts as a workflow key.
+        // The map is empty until the workflows list has been fetched, so the fallback preserves the
+        // original behavior. `WorkflowManager` handles caching and asset warm-up.
+        let workflowId = self.workflowManager.cachedWorkflowId(forOfferingId: offeringID) ?? offeringID
         return try await Async.call { completion in
-            self.backend.workflowsAPI.getWorkflow(
+            self.workflowManager.getWorkflow(
                 appUserID: self.appUserID,
-                workflowId: offeringID,
+                workflowId: workflowId,
                 isAppBackgrounded: false,
                 completion: completion
             )
         }
+    }
+
+    /// Synchronously returns the cached workflow for `offeringID` when one is present and fresh,
+    /// otherwise `nil`. Used to seed the workflow paywall without a backend round-trip; callers fall
+    /// back to the async ``workflow(forOfferingIdentifier:)`` when this returns `nil`.
+    @_spi(Internal)
+    func cachedWorkflow(forOfferingIdentifier offeringID: String) -> WorkflowDataResult? {
+        return self.workflowManager.cachedWorkflow(forOfferingId: offeringID)
     }
 
     internal func offerings(fetchPolicy: OfferingsManager.FetchPolicy) async throws -> Offerings {
@@ -1299,12 +1361,12 @@ public extension Purchases {
 
     func checkTrialOrIntroDiscountEligibility(packages: [Package]) async -> [Package: IntroEligibility] {
         let result = await self.checkTrialOrIntroDiscountEligibility(
-            productIdentifiers: packages.map(\.storeProduct.productIdentifier)
+            productIdentifiers: packages.map(\.storeProduct.id)
         )
 
         return Set(packages)
             .dictionaryWithValues { (package: Package) in
-                result[package.storeProduct.productIdentifier] ?? .init(eligibilityStatus: .unknown)
+                result[package.storeProduct.id] ?? .init(eligibilityStatus: .unknown)
             }
     }
 
@@ -1532,6 +1594,12 @@ public extension Purchases {
         await self.eventsManager?.track(featureEvent: paywallEvent)
     }
 
+    /// Used by `RevenueCatUI` to keep track of ``WorkflowEvent``s.
+    @_spi(Internal)
+    func track(workflowEvent: WorkflowEvent) async {
+        await self.eventsManager?.track(featureEvent: workflowEvent)
+    }
+
     /// Used by `RevenueCatUI` to keep track of ``CustomerCenterEvent``s.
     @_spi(Internal) func track(customerCenterEvent: any CustomerCenterEventType) {
         operationDispatcher.dispatchOnWorkerThread {
@@ -1679,20 +1747,25 @@ public extension Purchases {
      */
     @objc(configureWithConfiguration:)
     @discardableResult static func configure(with configuration: Configuration) -> Purchases {
-        configure(withAPIKey: configuration.apiKey,
-                  appUserID: configuration.appUserID,
-                  observerMode: configuration.observerMode,
-                  userDefaults: configuration.userDefaults,
-                  platformInfo: configuration.platformInfo,
-                  responseVerificationMode: configuration.responseVerificationMode,
-                  storeKitVersion: configuration.storeKitVersion,
-                  storeKitTimeout: configuration.storeKit1Timeout,
-                  networkTimeout: configuration.networkTimeout,
-                  dangerousSettings: configuration.dangerousSettings,
-                  showStoreMessagesAutomatically: configuration.showStoreMessagesAutomatically,
-                  diagnosticsEnabled: configuration.diagnosticsEnabled,
-                  preferredLocale: configuration.preferredLocale,
-                  automaticDeviceIdentifierCollectionEnabled: configuration.automaticDeviceIdentifierCollectionEnabled
+        return self.setDefaultInstance(
+            .init(
+                apiKey: configuration.apiKey,
+                appUserID: configuration.appUserID,
+                userDefaults: configuration.userDefaults,
+                observerMode: configuration.observerMode,
+                platformInfo: configuration.platformInfo,
+                responseVerificationMode: configuration.responseVerificationMode,
+                storeKitVersion: configuration.storeKitVersion,
+                storeKitTimeout: configuration.storeKit1Timeout,
+                networkTimeout: configuration.networkTimeout,
+                dangerousSettings: configuration.dangerousSettings,
+                showStoreMessagesAutomatically: configuration.showStoreMessagesAutomatically,
+                diagnosticsEnabled: configuration.diagnosticsEnabled,
+                preferredLocale: configuration.preferredLocale,
+                automaticDeviceIdentifierCollectionEnabled: configuration.automaticDeviceIdentifierCollectionEnabled,
+                currentConfiguration: configuration
+            ),
+            dedupingAgainst: configuration
         )
     }
 
@@ -1977,7 +2050,8 @@ public extension Purchases {
                   showStoreMessagesAutomatically: showStoreMessagesAutomatically,
                   diagnosticsEnabled: diagnosticsEnabled,
                   preferredLocale: preferredLocale,
-                  automaticDeviceIdentifierCollectionEnabled: automaticDeviceIdentifierCollectionEnabled)
+                  automaticDeviceIdentifierCollectionEnabled: automaticDeviceIdentifierCollectionEnabled,
+                  currentConfiguration: nil)
         )
     }
 
@@ -2243,11 +2317,31 @@ extension Purchases {
     /// - Parameter params: Parameters for the custom paywall impression.
     @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
     @objc public func trackCustomPaywallImpression(_ params: CustomPaywallImpressionParams) {
-        let offeringId = params.offeringId ?? self.offeringsManager.cachedOfferings?.current?.identifier
+        let cachedOfferings = self.offeringsManager.cachedOfferings
+        let resolvedOfferingId: String?
+        let resolvedPresentedOfferingContext: PresentedOfferingContext?
+
+        if let presentedOfferingContext = params.presentedOfferingContext {
+            resolvedOfferingId = params.offeringId
+            resolvedPresentedOfferingContext = presentedOfferingContext
+        } else if let offeringId = params.offeringId {
+            let resolvedOffering = cachedOfferings?[offeringId]
+            resolvedOfferingId = offeringId
+            resolvedPresentedOfferingContext = resolvedOffering?.presentedOfferingContext
+        } else {
+            let resolvedOffering = cachedOfferings?.current
+            resolvedOfferingId = resolvedOffering?.identifier
+            resolvedPresentedOfferingContext = resolvedOffering?.presentedOfferingContext
+        }
+
         Task {
             let event = CustomPaywallEvent.impression(
                 .init(),
-                .init(paywallId: params.paywallId, offeringId: offeringId)
+                .init(
+                    paywallId: params.paywallId,
+                    offeringId: resolvedOfferingId,
+                    presentedOfferingContext: resolvedPresentedOfferingContext
+                )
             )
             await self.eventsManager?.track(featureEvent: event)
         }
@@ -2366,6 +2460,13 @@ private extension Purchases {
         if old != nil {
             self.trialOrIntroPriceEligibilityChecker.clearCache()
             self.purchasedProductsFetcher?.clearCache()
+
+            if #available(iOS 15.0, macOS 12.0, watchOS 8.0, tvOS 15.0, *),
+               let cache = self.paywallCache {
+                self.operationDispatcher.dispatchOnWorkerThread {
+                    await cache.clearEligibilityCache()
+                }
+            }
         }
 
         self.delegate?.purchases?(self, receivedUpdated: new)

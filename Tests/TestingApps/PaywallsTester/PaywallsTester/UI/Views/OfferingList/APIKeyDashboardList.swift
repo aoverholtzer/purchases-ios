@@ -12,6 +12,9 @@
 import RevenueCatUI
 #endif
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct APIKeyDashboardList: View {
 
@@ -43,7 +46,19 @@ struct APIKeyDashboardList: View {
 
     @State
     private var presentPaywallOffering: Offering?
-    
+
+    @State
+    private var presentWorkflowSheetOffering: Offering?
+
+    @State
+    private var presentWorkflowFullOffering: Offering?
+
+    @State
+    private var workflowExitOfferOffering: Offering?
+
+    @State
+    private var presentedWorkflowExitOffer: Offering?
+
     @State
     private var isLoadingPaywall: Bool = false
 
@@ -231,6 +246,7 @@ struct APIKeyDashboardList: View {
                                 }
                                 .contextMenu {
                                     self.button(for: .workflow, offering: offering)
+                                    self.button(for: .presentWorkflow, offering: offering)
                                 }
                                 #else
                                 VStack(alignment: .leading) {
@@ -279,6 +295,18 @@ struct APIKeyDashboardList: View {
         #endif
                 .presentPaywallIfNeededModifier(offering: $offeringToPresent)
                 .presentPaywall(offering: $presentPaywallOffering, onDismiss: { })
+                // Uses offeringIdentifier content so workflow context resolves correctly.
+                // Exit offer is wired manually because presentPaywall doesn't support workflows yet.
+                .sheet(item: self.$presentWorkflowSheetOffering, onDismiss: self.handleWorkflowDismiss) { offering in
+                    self.workflowPaywallView(for: offering)
+                }
+                .fullScreenCover(item: self.$presentWorkflowFullOffering, onDismiss: self.handleWorkflowDismiss) { offering in
+                    self.workflowPaywallView(for: offering)
+                }
+                .sheet(item: self.$presentedWorkflowExitOffer) { exitOffering in
+                    PaywallView(offering: exitOffering)
+                        .customPaywallVariables(self.customVariables)
+                }
                 .customPaywallVariables(self.customVariables)
                 .onChange(of: offeringToPresent) { offering in
                     if offering != nil {
@@ -286,6 +314,16 @@ struct APIKeyDashboardList: View {
                     }
                 }
                 .onChange(of: presentPaywallOffering) { offering in
+                    if offering != nil {
+                        self.isLoadingPaywall = false
+                    }
+                }
+                .onChange(of: presentWorkflowSheetOffering) { offering in
+                    if offering != nil {
+                        self.isLoadingPaywall = false
+                    }
+                }
+                .onChange(of: presentWorkflowFullOffering) { offering in
                     if offering != nil {
                         self.isLoadingPaywall = false
                     }
@@ -298,8 +336,61 @@ struct APIKeyDashboardList: View {
         ForEach(PaywallTesterViewMode.allCases, id: \.self) { mode in
             self.button(for: mode, offering: offering)
         }
+
+        #if os(iOS)
+        // Presents through the UIKit `PaywallViewController` so its dismissal handling and the
+        // workflow exit-offer bridge can be exercised.
+        Button {
+            self.isLoadingPaywall = true
+            self.presentUIKitPaywall(for: offering)
+        } label: {
+            Text("UIKit View Controller")
+            Image(systemName: "rectangle.portrait.on.rectangle.portrait")
+        }
+        #endif
     }
     #endif
+
+    #if os(iOS)
+    @MainActor
+    private func presentUIKitPaywall(for offering: Offering) {
+        let windows = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+        guard var top = (windows.first(where: \.isKeyWindow) ?? windows.first)?.rootViewController else {
+            self.isLoadingPaywall = false
+            return
+        }
+        while let presented = top.presentedViewController {
+            top = presented
+        }
+        top.present(PaywallViewController(offering: offering, displayCloseButton: true), animated: true)
+        self.isLoadingPaywall = false
+    }
+    #endif
+
+    @ViewBuilder
+    private func workflowPaywallView(for offering: Offering) -> some View {
+        PaywallView(configuration: .init(
+            content: .offeringIdentifier(offering.identifier, presentedOfferingContext: nil),
+            displayCloseButton: true,
+            purchaseHandler: .default()
+        ))
+        #if DEBUG
+        .environment(\.workflowExitOfferOfferingBinding, self.$workflowExitOfferOffering)
+        #endif
+        .customPaywallVariables(self.customVariables)
+        .onAppear {
+            self.isLoadingPaywall = false
+        }
+    }
+
+    private func handleWorkflowDismiss() {
+        if let exitOffer = self.workflowExitOfferOffering {
+            self.presentedWorkflowExitOffer = exitOffer
+            self.workflowExitOfferOffering = nil
+        }
+    }
 
     @ViewBuilder
     private func button(for selectedMode: PaywallTesterViewMode, offering: Offering) -> some View {
@@ -319,7 +410,9 @@ struct APIKeyDashboardList: View {
             case .presentPaywall:
                 self.presentPaywallOffering = offering
             case .workflow:
-                self.presentedPaywall = .init(offering: offering, mode: selectedMode)
+                self.presentWorkflowSheetOffering = offering
+            case .presentWorkflow:
+                self.presentWorkflowFullOffering = offering
             }
         } label: {
             Text(selectedMode.name)
