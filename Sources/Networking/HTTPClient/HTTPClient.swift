@@ -35,6 +35,7 @@ class HTTPClient {
     private let retriableStatusCodes: Set<HTTPStatusCode>
     private let operationDispatcher: OperationDispatcher
     private let requestTimeoutManager: HTTPRequestTimeoutManagerType
+    private let apiSourceProvider: RemoteConfigSourceProviderType?
 
     private let retryBackoffIntervals: [TimeInterval] = [
         TimeInterval(0),
@@ -51,6 +52,7 @@ class HTTPClient {
          requestTimeout: TimeInterval = Configuration.networkTimeoutDefault,
          dateProvider: DateProvider = DateProvider(),
          operationDispatcher: OperationDispatcher,
+         apiSourceProvider: RemoteConfigSourceProviderType?,
          timeoutManager: HTTPRequestTimeoutManagerType? = nil
     ) {
         let config = URLSessionConfiguration.ephemeral
@@ -71,6 +73,7 @@ class HTTPClient {
         self.authHeaders = HTTPClient.authorizationHeader(withAPIKey: systemInfo.apiKey)
         self.dateProvider = dateProvider
         self.operationDispatcher = operationDispatcher
+        self.apiSourceProvider = apiSourceProvider
         self.requestTimeoutManager = timeoutManager ?? HTTPRequestTimeoutManager(
             defaultTimeout: timeout,
             dateProvider: dateProvider
@@ -152,6 +155,11 @@ class HTTPClient {
 
 extension HTTPClient {
 
+    static let rcContainerFormatAcceptHeaderValue = "application/x-rc-format"
+    static var rcContainerFormatElementEncodingHeaderValue: String {
+        return RCContainer.Element.ContentEncoding.requestElementEncodingHeaderValue
+    }
+
     static func authorizationHeader(withAPIKey apiKey: String) -> RequestHeaders {
         return [RequestHeader.authorization.rawValue: "Bearer \(apiKey)"]
     }
@@ -185,6 +193,8 @@ extension HTTPClient {
     enum RequestHeader: String {
 
         case authorization = "Authorization"
+        case accept = "Accept"
+        case acceptRCElementEncoding = "Accept-RC-Element-Encoding"
         case nonce = "X-Nonce"
         case eTag = "X-RevenueCat-ETag"
         case eTagValidationTime = "X-RC-Last-Refresh-Time"
@@ -300,9 +310,10 @@ internal extension HTTPClient {
         var method: HTTPRequest.Method { self.httpRequest.method }
         var path: String { self.httpRequest.path.relativePath }
 
-        func getCurrentRequestURL(proxyURL: URL?) -> URL? {
+        func getCurrentRequestURL(proxyURL: URL?, apiSourceURL: URL?) -> URL? {
             return self.httpRequest.path.url(
                 proxyURL: proxyURL,
+                apiSourceURL: apiSourceURL,
                 fallbackUrlIndex: self.fallbackUrlIndex
             )
         }
@@ -321,7 +332,7 @@ internal extension HTTPClient {
             }
             var copy = self
             copy.fallbackUrlIndex = self.fallbackUrlIndex?.advanced(by: 1) ?? 0
-            guard copy.getCurrentRequestURL(proxyURL: nil) != nil else {
+            guard copy.getCurrentRequestURL(proxyURL: nil, apiSourceURL: nil) != nil else {
                 // No more fallback hosts available
                 return nil
             }
@@ -387,10 +398,7 @@ private extension HTTPClient {
 
         let statusCode: HTTPStatusCode = .init(rawValue: httpURLResponse.statusCode)
 
-        // `nil` if status code is 304, since the response will be empty and fetched from the eTag.
-        let dataIfAvailable = statusCode == .notModified
-            ? nil
-            : data
+        let dataIfAvailable = Self.responseBodyData(statusCode: statusCode, data: data)
 
         return self.createVerifiedResponse(request: request,
                                            urlRequest: urlRequest,
@@ -448,6 +456,10 @@ private extension HTTPClient {
             }
             // Fetch from ETagManager if available
             .map { (response) -> VerifiedHTTPResponse<Data>? in
+                guard request.httpRequest.path.shouldSendEtag else {
+                    return response.asOptionalResponse
+                }
+
                 return self.eTagManager.httpResultFromCacheOrBackend(
                     with: response,
                     request: urlRequest,
@@ -646,7 +658,10 @@ private extension HTTPClient {
     }
 
     func convert(request: Request) -> URLRequest? {
-        guard let requestURL = request.getCurrentRequestURL(proxyURL: SystemInfo.proxyURL) else {
+        guard let requestURL = request.getCurrentRequestURL(
+            proxyURL: SystemInfo.proxyURL,
+            apiSourceURL: self.apiSourceURL(for: request)
+        ) else {
             return nil
         }
         var urlRequest = URLRequest(url: requestURL)
@@ -661,6 +676,24 @@ private extension HTTPClient {
         }
 
         return urlRequest
+    }
+
+    /// The API base source URL to use for `request`, or `nil` to fall back to the path's `serverHostURL`.
+    ///
+    /// API sources apply only when: the `usesRemoteConfigAPISources` dangerous setting is enabled, no proxy
+    /// is configured (a proxy pins every request to itself), the request is not already targeting an endpoint
+    /// fallback host, the path opts in via `usesAPISources`, and `SystemInfo.apiBaseURL` still holds its
+    /// default (an override pins the host, e.g. in tests).
+    private func apiSourceURL(for request: Request) -> URL? {
+        guard self.systemInfo.dangerousSettings.internalSettings.usesRemoteConfigAPISources,
+              SystemInfo.proxyURL == nil,
+              !request.isFallbackURLRequest,
+              request.httpRequest.path.usesAPISources,
+              SystemInfo.apiBaseURL == SystemInfo.defaultApiBaseURL,
+              let source = self.apiSourceProvider?.currentAPISource() else {
+            return nil
+        }
+        return URL(string: source.url)
     }
 
     private func headers(for request: Request, urlRequest: URLRequest) -> HTTPClient.RequestHeaders {
@@ -861,19 +894,6 @@ extension HTTPClient {
 
 // MARK: - Extensions
 
-fileprivate extension NetworkError {
-    var isAllowedToRetryWithFallbackHost: Bool {
-        switch self {
-        case .decoding, .unableToCreateRequest, .signatureVerificationFailed:
-            return false
-        case .dnsError, .networkError, .unexpectedResponse:
-            return true
-        case let .errorResponse(_, statusCode, _):
-            return HTTPStatusCode(rawValue: statusCode.rawValue).isServerError
-        }
-    }
-}
-
 extension HTTPClient {
 
     /// Information from a response to help identify a request.
@@ -907,6 +927,7 @@ extension HTTPRequest {
         internalSettings: InternalDangerousSettingsType
     ) -> HTTPClient.RequestHeaders {
         var result: HTTPClient.RequestHeaders = defaultHeaders
+        result += self.path.additionalHeaders
 
         if self.path.authenticated {
             result += authHeaders
@@ -960,6 +981,22 @@ private extension NetworkError {
 
 }
 
+extension HTTPClient {
+
+    static func responseBodyData(statusCode: HTTPStatusCode, data: Data?) -> Data? {
+        switch statusCode {
+        case .notModified:
+            // `nil` if status code is 304, since the response will be empty and fetched from the eTag.
+            return nil
+        case .noContent:
+            return data ?? Data()
+        default:
+            return data
+        }
+    }
+
+}
+
 extension Result where Success == Data?, Failure == NetworkError {
 
     /// Converts a `Result<Data?, NetworkError>` into `Result<HTTPResponse<Data?>, NetworkError>`
@@ -987,7 +1024,10 @@ extension Result where Success == VerifiedHTTPResponse<Data>, Failure == Network
         return self.flatMap { response in                   // Convert the `Result` type
             Result<VerifiedHTTPResponse<Value>, Error> {    // Create a new `Result<Value>`
                 try response.mapBody { data in              // Convert the from `Data` -> `Value`
-                    try Value.create(with: data)            // Decode `Data` into `Value`
+                    try Value.create(                       // Decode `Data` into `Value`
+                        with: data,
+                        httpStatusCode: response.httpStatusCode
+                    )
                 }
                 .copyWithNewRequestDate()                   // Update request date for 304 responses
             }

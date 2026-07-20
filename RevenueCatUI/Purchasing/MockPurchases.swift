@@ -32,6 +32,8 @@ final class MockPurchases: PaywallPurchasesType, @unchecked Sendable {
     private let _purchasesAreCompletedBy: PurchasesAreCompletedBy
     let preferredLocales: [String]
     let preferredLocaleOverride: String?
+    var isUIPreviewMode = false
+    var remoteConfigEnabled = false
 
     var purchasesAreCompletedBy: PurchasesAreCompletedBy {
         get { return _purchasesAreCompletedBy }
@@ -42,13 +44,12 @@ final class MockPurchases: PaywallPurchasesType, @unchecked Sendable {
 
 #if !os(tvOS)
     var workflowBlock: ((String) async throws -> WorkflowDataResult)?
+    var cachedWorkflowBlock: ((String) -> WorkflowDataResult?)?
 
     func workflow(forOfferingIdentifier offeringID: String) async throws -> WorkflowDataResult {
         guard let block = workflowBlock else { throw ErrorCode.configurationError }
         return try await block(offeringID)
     }
-
-    var cachedWorkflowBlock: ((String) -> WorkflowDataResult?)?
 
     func cachedWorkflow(forOfferingIdentifier offeringID: String) -> WorkflowDataResult? {
         return self.cachedWorkflowBlock?(offeringID)
@@ -177,10 +178,12 @@ extension PaywallPurchasesType {
 
         mapped.cachedOfferings = self.cachedOfferings
         mapped.offeringsBlock = { try await self.offerings() }
+        mapped.isUIPreviewMode = self.isUIPreviewMode
+        mapped.remoteConfigEnabled = self.remoteConfigEnabled
         #if !os(tvOS)
         mapped.workflowBlock = { try await self.workflow(forOfferingIdentifier: $0) }
-        mapped.trackWorkflowEventBlock = { await self.track(workflowEvent: $0) }
         mapped.cachedWorkflowBlock = { self.cachedWorkflow(forOfferingIdentifier: $0) }
+        mapped.trackWorkflowEventBlock = { await self.track(workflowEvent: $0) }
         #endif
 
         return mapped
@@ -206,10 +209,12 @@ extension PaywallPurchasesType {
 
         mapped.cachedOfferings = self.cachedOfferings
         mapped.offeringsBlock = { try await self.offerings() }
+        mapped.isUIPreviewMode = self.isUIPreviewMode
+        mapped.remoteConfigEnabled = self.remoteConfigEnabled
         #if !os(tvOS)
         mapped.workflowBlock = { try await self.workflow(forOfferingIdentifier: $0) }
-        mapped.trackWorkflowEventBlock = { await self.track(workflowEvent: $0) }
         mapped.cachedWorkflowBlock = { self.cachedWorkflow(forOfferingIdentifier: $0) }
+        mapped.trackWorkflowEventBlock = { await self.track(workflowEvent: $0) }
         #endif
 
         return mapped
